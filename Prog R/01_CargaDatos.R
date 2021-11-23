@@ -40,9 +40,26 @@ datJam = datJam %>% getCoordCent(.) %>% getCoordLines(.) %>%
   select(-location,-city,-country,-location_centroid)
 
 
+### Armo los segmentos como objeto sf
+# https://stackoverflow.com/questions/61958296/convert-character-linestring-to-geometry-in-sf
+
+aux = datJam
+
+aux[,'geometry'] = apply(aux[,c('X_lini','Y_lini','X_lfin','Y_lfin')],1,
+                         function(xx) {
+                           res = paste0('LINESTRING (',paste(xx[c(1,2)], collapse = ' '),' , ',
+                                  paste(xx[c(3,4)], collapse = ' '),')')
+                           return(res)
+                         })
+
+aux_sf <- sf::st_as_sf(aux, wkt = "geometry" )
+
 ### Guardo los datos
 
 save(datJam,file = 'BasesR/datJam.RData')
+
+length(unique(c(datJam$street,datJam$endnode)))
+length(unique(datJam$endnode))
 
 
 
