@@ -33,10 +33,7 @@ arreglaCaracteres = function(x) {
   
   x = gsub('Ã‘','N',x)
   
-  
-  
-  
-  
+
   x = gsub('\\.','',x)
   x = tolower(x)
 }
@@ -86,24 +83,47 @@ for(ii in rownames(calleBusDF)) {
 #### Para las que no son iguales hace una busqueda palabra por palabra
 aa = calleBusDF[is.na(calleBusDF$NOM_CALLE),]
 
-for(ii in rownames(aa)) {
-  aux = aa[ii,'callesBuscar']
-  auxSplit = strsplit(aux,' ')[[1]]
-  # auxSplit = auxSplit[nchar(auxSplit) > 1]
-  
-  ref = data.frame(calle = unique(nomCalles$NOM_CALLE),cont = 0)
-  rownames(ref) = ref$calle
-  
-  for(jj in auxSplit) {
-    aux = ref$calle[grep(jj,ref$calle,ignore.case = T)]
-    
-    ref[aux,'cont'] = ref[aux,'cont'] + 1
-    
-    ref[ref$cont == max(ref$cont),]
-    
-  }
-  
-}
+# for(ii in rownames(aa)) {
+#   aux = aa[ii,'callesBuscar']
+#   auxSplit = strsplit(aux,' ')[[1]]
+#   # auxSplit = auxSplit[nchar(auxSplit) > 1]
+#   
+#   ref = data.frame(calle = unique(nomCalles$NOM_CALLE),cont = 0)
+#   rownames(ref) = ref$calle
+#   
+#   for(jj in auxSplit) {
+#     aux = ref$calle[grep(jj,ref$calle,ignore.case = T)]
+#     
+#     ref[aux,'cont'] = ref[aux,'cont'] + 1
+#     
+#     ref[ref$cont == max(ref$cont),]
+#     
+#   }
+#   
+# }
 
 
+
+
+######## Agrego codigos de calles
+
+## Street 
+
+datJamCods = datJam %>% left_join(calleBusDF %>% select(calleOrig,COD_NOMBRE), 
+                              by = c('street' = 'calleOrig')) %>%
+  rename('street_cod' = 'COD_NOMBRE') %>%
+  left_join(calleBusDF %>% select(calleOrig,COD_NOMBRE), 
+            by = c('endnode' = 'calleOrig')) %>%
+  rename('endnode_cod' = 'COD_NOMBRE')
+  
+sum(is.na(datJamCods$street_cod))
+sum(is.na(datJamCods$endnode_cod))
+
+sum(is.na(datJamCods$endnode_cod) & is.na(datJamCods$street_cod))
+
+
+#################################################
+####### GUARDO LA BASE CON LOS CODIGOS
+
+save(datJamCods,file = 'BasesR/datJamCods.RData')
 

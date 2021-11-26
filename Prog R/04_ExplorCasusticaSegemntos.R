@@ -26,27 +26,27 @@ for(ii in fun) source(here('Funciones',ii))
 ###### Exploro casustica
 
 #### Datos atascos
-load('BasesR/datJam.RData')
+load('BasesR/datJamCods.RData')
 
+datJam = datJamCods
 ###
 head(datJam)
 
-### Paso a sf un df de lineas
 datJam[,'geometry'] = apply(datJam[,c('X_lini','Y_lini','X_lfin','Y_lfin')],1,
-                         function(xx) {
-                           res = paste0('LINESTRING (',paste(xx[c(2,1)], collapse = ' '),' , ',
-                                        paste(xx[c(4,3)], collapse = ' '),')')
-                           return(res)
-                         })
+                            function(xx) {
+                              res = paste0('LINESTRING (',paste(xx[c(1,2)], collapse = ' '),' , ',
+                                           paste(xx[c(3,4)], collapse = ' '),')')
+                              return(res)
+                            })
 
 segment_sf <- sf::st_as_sf(datJam, wkt = "geometry" )
 
 
 datJam[,'geometry'] = apply(datJam[,c('Xc','Yc')],1,
-                                function(xx) {
-                                  res = paste0('POINT (',paste(xx[c(2,1)], collapse = ' '),')')
-                                  return(res)
-                                })
+                            function(xx) {
+                              res = paste0('POINT (',paste(xx[c(1,2)], collapse = ' '),')')
+                              return(res)
+                            })
 
 
 points_sf <- sf::st_as_sf(datJam, wkt = "geometry" )
