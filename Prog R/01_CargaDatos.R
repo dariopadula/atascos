@@ -7,6 +7,7 @@ library(htmlwidgets)
 library(leaflet)
 library(lubridate)
 # library(parallel)
+library(nngeo)
 library(viridis)
 
 
@@ -188,6 +189,9 @@ pp = leaflet() %>% # ABRE LA VENTANA PARA HACER EL MAPA
 
 pp
 
+
+
+# highlightOptions = highlightOptions(stroke = 4, weight = 2)
 # %>%
 
 
