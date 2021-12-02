@@ -54,11 +54,11 @@ rownames(calleBusDF) = calleBusDF[,'calleOrig']
 #### Nomenclator IM
 vias = st_read('SHP/v_mdg_vias')
 
-nomCalles = vias %>% st_set_geometry(NULL) %>% select(NOM_CALLE,COD_NOMBRE) %>%
+nomCalles = vias %>% st_set_geometry(NULL) %>% dplyr::select(NOM_CALLE,COD_NOMBRE) %>%
   group_by(COD_NOMBRE) %>% slice_head() %>% ungroup() %>%
   mutate(NOM_CALLE = arreglaCaracteres(NOM_CALLE))
 
-callFind = 'salvo'
+callFind = 'herrera'
 calleBusDF$calleOrig[grep(callFind,calleBusDF$calleOrig,ignore.case = T)]
 calleBusDF$callesBuscar[grep(callFind,calleBusDF$callesBuscar,ignore.case = T)]
 nomCalles[grep(callFind,nomCalles$NOM_CALLE,ignore.case = T),]
@@ -82,6 +82,18 @@ for(ii in rownames(calleBusDF)) {
 #########################################
 #### Para las que no son iguales hace una busqueda palabra por palabra
 aa = calleBusDF[is.na(calleBusDF$NOM_CALLE),]
+
+
+############################################
+###### INTENTO UN JOIN ESPACIAL
+
+vias_bf = st_buffer(vias,10)
+datJam_bf = st_buffer(datJam,1)
+
+pp = datJam_bf %>% st_join(vias_bf[,c('NOM_CALLE','COD_NOMBRE')],join = st_intersects,largest = T)
+
+
+pp = pp %>% st_set_geometry(NULL) %>% group_by(street,NOM_CALLE,COD_NOMBRE) %>% slice_head()
 
 # for(ii in rownames(aa)) {
 #   aux = aa[ii,'callesBuscar']
