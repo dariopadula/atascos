@@ -24,7 +24,8 @@ for(ii in fun) source(paste0('Funciones/',ii))
 ###### LEE base
 
 # datos = read.table('Datos/etwazetrafficjam_202111261100.csv',sep = ',',header = T)
-datos = read.table('Datos/etwazetrafficjam_202112012024.csv',sep = ',',header = T)
+# datos = read.table('Datos/etwazetrafficjam_202112012024.csv',sep = ',',header = T)
+datos = read.table('Datos/etwazetrafficjam_202112061701.csv',sep = ',',header = T)
 
 #############################################
 #### Me quedo solo con los atascos
@@ -36,7 +37,7 @@ datJam = subset(datos,delay >= 0)
 datJam = datJam %>% mutate(datecreated = as.POSIXct(strptime(datecreated, "%Y-%m-%d %H:%M:%S")),
                            datemodified = as.POSIXct(strptime(datemodified, "%Y-%m-%d %H:%M:%S")),
                            datepublished = as.POSIXct(strptime(datepublished, "%Y-%m-%d %H:%M:%S"))) %>%
-  filter(datecreated >= as.POSIXct(strptime('2021-11-24 00:00:01', "%Y-%m-%d %H:%M:%S")))
+  filter(datecreated >= as.POSIXct(strptime('2021-11-27 00:00:01', "%Y-%m-%d %H:%M:%S")))
 
 #############################################
 ##### EXTRAE LAS COORDENADAS
@@ -48,10 +49,11 @@ datJam = datJam %>% arrange(desc(entity_id),desc(datemodified)) %>%
     dplyr::select(-city,-country,-location_centroid,-location,-entity_type,-fiware_servicepath,-pubmillis,-turntype) %>%
   mutate(diaStr = substr(datemodified,1,10),
          diaSem = weekdays(datemodified),
-         finDeSem = ifelse(diaSem %in% c('sábado','domingo'),'Fin de semana','Entre semana'),
+         finDeSem = ifelse(diaSem %in% c('sábado','domingo'),'Fin de semana','Lunes a viernes'),
          hora = hour(datemodified),
          minuto = minute(datemodified),
-         minutoHora = 60*hora + minuto) %>%
+         minutoHora = 60*hora + minuto,
+         diaSem = factor(diaSem,levels = c('lunes','martes','miércoles','jueves','viernes','sábado','domingo'))) %>%
   st_as_sf(.,wkt = 'geometry',crs = 4326) %>%
   st_transform(.,crs = 32721) %>%
   mutate(ID_Base = row_number())
@@ -93,6 +95,7 @@ datJamSegm = datJamSegm %>% left_join(datJamCentr %>%
                                         dplyr::select(ID_fila,ID_segmento),by = 'ID_fila')
 
 
+save(datJamSegm,file = 'Resultados/datJamSegm.RData')
 ###############################################################
 ########### Calculo variables para agreagar
 
