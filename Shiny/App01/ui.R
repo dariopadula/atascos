@@ -33,7 +33,7 @@ ui <- dashboardPage(
       )),
   dashboardBody(
     tabsetPanel(
-      tabPanel('Mapa',icon = icon("fas fa-leaf"),
+      tabPanel('Mapa',icon = icon("fas fa-globe-europe"),
         fluidRow(
           leafletOutput("distPlot",width="100%",height="700px")
         )
@@ -43,7 +43,7 @@ ui <- dashboardPage(
            DT::dataTableOutput("descTable")
          )
       ),
-      tabPanel('Heat map',icon = icon("bar-chart-o"),
+      tabPanel('Heat map',icon = icon("fas fa-fire"),
                fluidRow(
                  column(2,
                  selectizeInput('varArrang',label = 'Variable de orden',c('count','delayMean','level345','lengthMean'),

@@ -246,7 +246,12 @@ dat_desc_Agg = eventReactive(input$run, {
 
 
 output$descTable = DT::renderDataTable({
-  dat_desc_Agg()
+  aux = dat_desc_Agg()
+  colnames(aux) = c('Calle','Nro eventos','Delay Medio','Nivel Medio','Total nivel 4 o 5',
+                    'Largo Medio','Velocidad km/h Medio','Hora Media')
+  
+  return(aux)
+  
 })
 
 

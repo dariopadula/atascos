@@ -39,8 +39,24 @@ gray6 = c('#BDBDBD','#848484','#6E6E6E','#585858','#2E2E2E','#151515')
 
 load('Shiny/Insumos/01_InsumosShiny.RData')
 
+###### Data frame nombre variables 
+
+nomVarsDF = data.frame(nomBase = c('street','count','delayMean','level45',
+                                   'level345','levelMean','speedkmhMean',
+                                   'lengthMean','timeStr'),
+                       nomShow = c('Calle','Nro eventos','Delay Medio',
+                                   'Total nivel 4 o +','Total nivel 3 o +','Nivel Medio',
+                                   'Velocidad km/h Medio','Largo Medio','Hora Media')
+                       )
+                    
+
+nomVarsDF_b = nomVarsDF
+rownames(nomVarsDF_b) = as.character(nomVarsDF$nomBase)
+
+nomVarsDF_s = nomVarsDF
+rownames(nomVarsDF_s) = as.character(nomVarsDF$nomShow)
 
 ###########################################
 ###### EJECUTA APP
-runApp('Shiny/App01',launch.browser = TRUE)
+runApp('Shiny/App02',launch.browser = TRUE)
 
