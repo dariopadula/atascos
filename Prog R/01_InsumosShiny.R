@@ -25,7 +25,8 @@ for(ii in fun) source(paste0('Funciones/',ii))
 
 # datos = read.table('Datos/etwazetrafficjam_202111261100.csv',sep = ',',header = T)
 # datos = read.table('Datos/etwazetrafficjam_202112012024.csv',sep = ',',header = T)
-datos = read.table('Datos/etwazetrafficjam_202112061701.csv',sep = ',',header = T)
+# datos = read.table('Datos/etwazetrafficjam_202112061701.csv',sep = ',',header = T)
+datos = read.table('Datos/etwazetrafficjam_202112071333.csv',sep = ',',header = T)
 
 #############################################
 #### Me quedo solo con los atascos
@@ -37,7 +38,7 @@ datJam = subset(datos,delay >= 0)
 datJam = datJam %>% mutate(datecreated = as.POSIXct(strptime(datecreated, "%Y-%m-%d %H:%M:%S")),
                            datemodified = as.POSIXct(strptime(datemodified, "%Y-%m-%d %H:%M:%S")),
                            datepublished = as.POSIXct(strptime(datepublished, "%Y-%m-%d %H:%M:%S"))) %>%
-  filter(datecreated >= as.POSIXct(strptime('2021-11-27 00:00:01', "%Y-%m-%d %H:%M:%S")))
+  filter(datepublished >= as.POSIXct(strptime('2021-11-29 00:00:01', "%Y-%m-%d %H:%M:%S")))
 
 #############################################
 ##### EXTRAE LAS COORDENADAS
@@ -309,8 +310,24 @@ datFull = datJam_df %>% mutate(interv = ceiling(minutoHora/largoInt)) %>%
             level345 = sum(level %in% c(3,4,5)),
             lengthMean = round(mean(length,na.rm = T))) %>%
   ungroup() %>%
-  arrange(desc(across(all_of(varArrang)))) %>% head(nCalles) 
+  arrange(desc(across(all_of(varArrang)))) %>% 
+  mutate(acumulado = cumsum(count),
+         porcCum = round(100*acumulado/sum(count),1),
+         porcCount = round(100*count/sum(count),2),
+         IDpos = row_number()) %>%
+  head(nCalles) 
 
+
+
+pp = ggplot(data = datFull, aes(x = IDpos,y = porcCum))  + 
+geom_point(aes(text = sprintf(paste("<b><a href='http://www.samurainoodle.com'>Calle</a></b>: %s",
+                               "<b><a href='http://www.samurainoodle.com'>Posición</a></b>: %s",
+                               "<b><a href='http://www.samurainoodle.com'>Porcentaje</a></b>: %s",
+                               "<b><a href='http://www.samurainoodle.com'>Porcentaje Acumulado</a></b>: %s",
+                               sep = '\n'),street,IDpos,porcCount,porcCum)))
+
+
+ggplotly(pp,tooltip = c("text"))
 
 
 largoInt = 15

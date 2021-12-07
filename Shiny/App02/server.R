@@ -115,7 +115,8 @@ datAgg = eventReactive(input$run, {
                       paste("<b><a href='http://www.samurainoodle.com'>Level</a></b>:",round(levelMean)),
                       paste("<b><a href='http://www.samurainoodle.com'>Speed Kmh</a></b>:",round(speedkmhMean,2)),
                       paste("<b><a href='http://www.samurainoodle.com'>Hora promedio</a></b>:",timeStr)),
-      opacity = porcTimeJam/100)  %>% 
+      opacity = ifelse(porcTimeJam/100 < 0.1,0.1,porcTimeJam/100),
+      weight = ifelse(porcTimeJam*0.1 < 0.3,0.3,porcTimeJam*0.1))  %>% 
     left_join(segmentUnic, by = 'ID_segmento') %>% st_as_sf(.,sf_column_name = 'geometry',crs = 32721) %>%
     st_transform(.,crs = 4326) 
   
@@ -129,18 +130,26 @@ datAgg = eventReactive(input$run, {
 pp <- eventReactive(input$run, {
   
   datAgg = datAgg()
+  usePalet = input$usePalet
   
-  pal <- colorBin(
-    bins = 9,
-    palette = 'Reds',
-    domain = seq(0,100,5))
+  if(usePalet) {
+    pal <- colorBin(
+      bins = 9,
+      palette = 'Reds',
+      domain = seq(0,100,5))
+  } else {
+    pal <- colorBin(
+      bins = 9,
+      palette = 'Reds',
+      domain = datAgg$porcTimeJam)
+  }
   
   
   pp = leaflet() %>% # ABRE LA VENTANA PARA HACER EL MAPA
     addTiles(group = "OSM") %>% # DEFINE UN FONDO (POR DEFECTO OSM)
     addProviderTiles(providers$CartoDB.DarkMatter, group = 'CartoDB.Positron') %>%
     addPolylines(data = datAgg,
-                 weight = ~porcTimeJam*0.1,
+                 weight = ~weight,
                  color = ~pal(porcTimeJam),
                  fillColor = ~pal(porcTimeJam),
                  fillOpacity = ~opacity,
@@ -292,7 +301,6 @@ datFiltro_heat = eventReactive(input$run2, {
 datFull = eventReactive(input$run2, {
 
   varArrang = nomVarsDF_s[input$varArrang,'nomBase']
-  nCalles = input$nCalles
   largoInt = input$largoInt
   
   datosHeat = datFiltro_heat()
@@ -305,7 +313,13 @@ datFull = eventReactive(input$run2, {
               level345 = sum(level %in% c(3,4,5)),
               lengthMean = round(mean(length,na.rm = T))) %>%
     ungroup() %>%
-    arrange(desc(across(all_of(varArrang)))) %>% head(nCalles) 
+    arrange(desc(across(all_of(varArrang)))) %>% 
+    mutate(acumulado = cumsum(count),
+           porcCum = round(100*acumulado/sum(count),1),
+           porcCount = round(100*count/sum(count),2),
+           IDpos = row_number())
+  # %>%
+  #   head(nCalles) 
   
   return(datFull)
 
@@ -315,7 +329,8 @@ datFull = eventReactive(input$run2, {
 dataPlot = eventReactive(input$run2, {
   
   largoInt = input$largoInt
-  datFull = datFull()
+  nCalles = input$nCalles
+  datFull = head(datFull(),nCalles)
   
   datosHeat = datFiltro_heat()
   
@@ -356,7 +371,7 @@ dataPlot = eventReactive(input$run2, {
   return(dataAux)
 
 })
-##### Plot
+##### Plot Heat
 
 
 heatPlot = eventReactive(input$run2, {
@@ -397,22 +412,42 @@ heatPlot = eventReactive(input$run2, {
   return(pp)
 })
 
-# output$heatPlot <- renderPlot({
-#   heatPlot()
-# })
 
+###### Por Porcentaje
+
+porcPlot = eventReactive(input$run2, {
+  datFull = datFull()
+  
+  textAdd = sprintf(paste('Total de eventos: %s',
+                          'Total de eventos filtrados: %s',
+                          'Porcentaje del total: %s',
+                          sep = '\n'),
+                    nrow(datJam_df),sum(datFull$count),round(100*sum(datFull$count)/nrow(datJam_df),1))
+  
+  pp = ggplot(data = datFull, aes(x = IDpos,y = porcCount))  + 
+    theme_minimal() + 
+    geom_point(aes(text = sprintf(paste("<b><a href='http://www.samurainoodle.com'>Calle</a></b>: %s",
+                                        "<b><a href='http://www.samurainoodle.com'>Posición</a></b>: %s",
+                                        "<b><a href='http://www.samurainoodle.com'>Porcentaje</a></b>: %s",
+                                        "<b><a href='http://www.samurainoodle.com'>Porcentaje Acumulado</a></b>: %s",
+                                        sep = '\n'),street,IDpos,porcCount,porcCum)), 
+               colour = 'gray',alpha = 0.5) + ylab('% eventos') + xlab('Ranking de calles') +
+    geom_text(label = textAdd,x = mean(datFull$IDpos),y = max(datFull$porcCount)-1,
+              hjust = 0,vjust = 1,size = 4)
+  # annotate(text = textAdd,x = Inf,y = 0,hjust = 1,vjust = 0)
+  
+return(pp)
+})
 
 output$heatPlot <- renderPlotly({
-  
-  # label <- list(
-  #   bgcolor = "red",
-  #   bordercolor = "transparent"
-  # )
-  
   ggplotly(heatPlot(),tooltip = c("text"))
-  # ggplotly(heatPlot(),tooltip = c("text"),hoverlabel = label) #%>% layout(legend = list(orientation = "h", x = 0.4, y = -0.2))
 })
   
+output$porcPlot <- renderPlotly({
+  ggplotly(porcPlot(),tooltip = c("text"))
+})
+
+
 }) ### CIERRA SERVER
 
 
