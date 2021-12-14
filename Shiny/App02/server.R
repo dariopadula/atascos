@@ -417,6 +417,7 @@ heatPlot = eventReactive(input$run2, {
 
 porcPlot = eventReactive(input$run2, {
   datFull = datFull()
+  nCalles = input$nCalles
   
   textAdd = sprintf(paste('Total de eventos: %s',
                           'Total de eventos filtrados: %s',
@@ -432,6 +433,13 @@ porcPlot = eventReactive(input$run2, {
                                         "<b><a href='http://www.samurainoodle.com'>Porcentaje Acumulado</a></b>: %s",
                                         sep = '\n'),street,IDpos,porcCount,porcCum)), 
                colour = 'gray',alpha = 0.5) + ylab('% eventos') + xlab('Ranking de calles') +
+    geom_point(data = datFull %>% filter(IDpos == nCalles),
+               aes(text = sprintf(paste("<b><a href='http://www.samurainoodle.com'>Calle</a></b>: %s",
+                                        "<b><a href='http://www.samurainoodle.com'>Posición</a></b>: %s",
+                                        "<b><a href='http://www.samurainoodle.com'>Porcentaje</a></b>: %s",
+                                        "<b><a href='http://www.samurainoodle.com'>Porcentaje Acumulado</a></b>: %s",
+                                                    sep = '\n'),street,IDpos,porcCount,porcCum)), 
+               colour = 'blue',alpha = 1) + 
     geom_text(label = textAdd,x = mean(datFull$IDpos),y = max(datFull$porcCount)-1,
               hjust = 0,vjust = 1,size = 4)
   # annotate(text = textAdd,x = Inf,y = 0,hjust = 1,vjust = 0)
