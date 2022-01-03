@@ -20,14 +20,59 @@ library(rgdal)
 fun = dir('Funciones/')
 fun = fun[grep('\\.R',fun,ignore.case = T)]
 for(ii in fun) source(paste0('Funciones/',ii))
+
+###################################
+##### FUncion Arregla caracteres
+arreglaCaracteres = function(x) {
+  x = gsub('Ã\u0091','N',x)
+  x = gsub('ã\u0081','A',x)
+  x = gsub('Ã\u0081','A',x)
+  
+  x = gsub('ã¼','u',x)
+  x = gsub('Ã¼','u',x)
+  
+  x = gsub('Ã‘','N',x)
+  
+  
+  x = gsub('\\.','',x)
+  x = tolower(x)
+}
+
 ######################################################
 ###### LEE base
 
 # datos = read.table('Datos/etwazetrafficjam_202111261100.csv',sep = ',',header = T)
 # datos = read.table('Datos/etwazetrafficjam_202112012024.csv',sep = ',',header = T)
 # datos = read.table('Datos/etwazetrafficjam_202112061701.csv',sep = ',',header = T)
-datos = read.table('Datos/etwazetrafficjam_202112071333.csv',sep = ',',header = T)
+# datos = read.table('Datos/etwazetrafficjam_202112071333.csv',sep = ',',header = T)
 
+nameBase = '202112141520'
+
+datos = read.table(paste0('Datos/etwazetrafficjam_',nameBase,'.csv'),sep = ',',header = T)
+
+
+######################################
+##### Registra las bases que se van poniendo
+##### e indica si hay que calcular o no
+IndAgg = TRUE
+IndIni = FALSE
+if(dir.exists('BasesActualiza/jamBaseNames.RData')) {
+  IndAgg = !nameBase %in% jamBaseNames
+  load('BasesActualiza/jamBaseNames.RData')
+  jamBaseNames = unique(c(jamBaseNames,nameBase))
+  
+  ###### Cargo las bases previas
+  load('BasesR/011_datJam.RData')
+  datJamPrev = datJam
+  load('Resultados/011_datJamDir.RData')
+  datJamDirPrev = datJamDir
+  maxDate = max(datJamDir$datemodified)
+  minDate = min(datJamDir$datemodified)
+} else {
+  IndIni = TRUE
+  jamBaseNames = nameBase
+  save(jamBaseNames,file = 'BasesActualiza/jamBaseNames.RData')
+}
 #############################################
 #### Me quedo solo con los atascos
 datJam = subset(datos,delay >= 0)
@@ -43,6 +88,12 @@ datJam = datJam %>% mutate(datecreated = as.POSIXct(strptime(datecreated, "%Y-%m
                            datemodified = as.POSIXct(strptime(datemodified, "%Y-%m-%d %H:%M:%S")),
                            datepublished = as.POSIXct(strptime(datepublished, "%Y-%m-%d %H:%M:%S"))) %>%
   filter(datepublished >= as.POSIXct(strptime('2021-11-29 00:00:01', "%Y-%m-%d %H:%M:%S")))
+
+##### Filtro de fecha
+
+# if(IndIni) {
+#   datJam = datJam %>% 
+# }
 
 #############################################
 ##### EXTRAE LAS COORDENADAS
@@ -75,7 +126,8 @@ datJam = datJam %>% arrange(desc(entity_id),desc(datemodified)) %>%
 
 ######################################################
 #### Calles a buscar
-calleBusDF = data.frame(calleOrig = c(datJam$street,datJam$endnode)) %>% group_by(calleOrig) %>%
+calleBusDF = data.frame(calleOrig = c(datJam$street,datJam$endnode)) %>% 
+  group_by(calleOrig) %>%
   summarise(cont = n()) %>% ungroup() %>% filter(calleOrig != '') %>%
   mutate(callesBuscar = arreglaCaracteres(calleOrig),
          NOM_CALLE = NA,
@@ -92,10 +144,28 @@ nomCalles = vias %>% st_set_geometry(NULL) %>% dplyr::select(NOM_CALLE,COD_NOMBR
   mutate(NOM_CALLE = arreglaCaracteres(NOM_CALLE))
 
 
+
+if(file.exists('Resultados/011_codCallesAllPrev.RData')) {
+  load('Resultados/011_codCallesAllPrev.RData')
+  
+  noEstan = calleBusDF[!rownames(calleBusDF) %in% rownames(codCallesAllPrev),]
+  
+  noEstan = noEstan %>% dplyr::select(-cont)
+
+  codCallesAllPrev = codCallesAllPrev %>% mutate(callesBuscar = arreglaCaracteres(calleOrig))
+  
+  calleBusDF = rbind(codCallesAllPrev[,colnames(noEstan)],noEstan)
+  
+}
+
+
+
+
+
 ###########################################
 ##### Encuentra las que estan igual
 
-for(ii in rownames(calleBusDF)) {
+for(ii in rownames(calleBusDF)[is.na(calleBusDF$NOM_CALLE)]) {
   buscar = calleBusDF[ii,'callesBuscar']
   expr = paste0('^',buscar,'$')
   aux = nomCalles[grep(expr,nomCalles$NOM_CALLE,ignore.case = T),]
@@ -117,7 +187,6 @@ datJam[,'COD_NOMBRE'] =  calleBusDF[as.character(datJam$street),'COD_NOMBRE']
 vias_bf = st_buffer(vias,10)
 
 
-
 datVacios = subset(datJam,street == '' & is.na(COD_NOMBRE))
 datNoVacios = subset(datJam,street != '' & is.na(COD_NOMBRE)) %>% 
   group_by(street) %>% slice_head()
@@ -127,7 +196,8 @@ datMerge = datNoVacios %>% rbind(datVacios) %>% select(-COD_NOMBRE,-NOM_CALLE)
 datMerge_bf = st_buffer(datMerge,1)
 
 datMerge_bf_cod = datMerge_bf %>% st_join(vias_bf[,c('NOM_CALLE','COD_NOMBRE')],
-                                          join = st_intersects,largest = T)
+                                          join = st_intersects,largest = T) %>%
+  suppressWarnings()
 
 
 resMerge_bf_cod = datMerge_bf_cod %>% st_set_geometry(NULL) %>% 
@@ -146,7 +216,8 @@ codCallesAll = rbind(calleBusDF[!is.na(calleBusDF$NOM_CALLE),colnames(resMerge_b
 rownames(codCallesAll) = as.character(codCallesAll$calleOrig)
 
 
-datJam$ID_CODCALLE = ifelse(datJam$street == '',as.character(datJam$ID_Base),datJam$street)
+datJam$ID_CODCALLE = ifelse(datJam$street == '',as.character(datJam$ID_Base),
+                            datJam$street)
 
 
 datJam[,'NOM_CALLE'] =  codCallesAll[as.character(datJam$ID_CODCALLE),'NOM_CALLE']
@@ -155,6 +226,12 @@ datJam[,'COD_NOMBRE'] =  codCallesAll[as.character(datJam$ID_CODCALLE),'COD_NOMB
 datJam[,'NOM_CALLE_END'] = codCallesAll[as.character(datJam$endnode),'NOM_CALLE'] 
 datJam[,'COD_NOMBRE_END'] = codCallesAll[as.character(datJam$endnode),'COD_NOMBRE'] 
 
+
+####### GUardo las calles encontradas hasta el momento
+codCallesAllPrev = codCallesAll
+save(codCallesAllPrev,file = 'Resultados/011_codCallesAllPrev.RData')
+############################################
+###### Agrega direccion
 ############################################
 ##### Encuentro la calle de inicio
 
@@ -170,7 +247,7 @@ puntosFin = datJam %>% dplyr::select(ID_Base,COD_NOMBRE) %>%
 
 
 #################################################
-####### GUARDO LA BASE CON LOS CODIGOS
+####### Agrega direccion
 
 load('Resultados/001_segmProy.RData')
 
@@ -273,6 +350,7 @@ st_geometry(datJamDir) = aux
 ########################################
 ####### GUarda las bases con y sin direccion
 save(datJam,file = 'BasesR/011_datJam.RData')
+#### GUARDO LA BASE CON LOS CODIGOS
 save(datJamDir,file = 'Resultados/011_datJamDir.RData')
 
 
