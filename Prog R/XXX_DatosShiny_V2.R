@@ -120,10 +120,29 @@ if((IndAgg | IndIni)) {
   ##### data frame de la base datJamDir
   ########################################
   datJam_df = datJam %>% st_set_geometry(NULL)
+  
+  ##### Tabla con dias y meses y semana
+  dsma = datJam_df %>% dplyr::select(diaStr,finDeSem,diaSem) %>% 
+    group_by(diaStr) %>% 
+    slice_head() %>%
+    ungroup() %>%
+    mutate(diaNum = as.numeric(substr(diaStr,9,10)),
+           mes = substr(diaStr,6,7),
+           anio = substr(diaStr,1,4),
+           levelDia = as.numeric(diaSem),
+           diaSem = as.character(diaSem)) %>%
+    arrange(anio,mes,diaNum) %>% data.frame()
+  
+  rownames(dsma) = dsma$diaStr
+  
   #########################################################
   ########### GUardo insumos shiny
   
   save(datJam_df,datJamSegm_df,segmentUnic, file = 'Shiny/Insumos/XXX_DatosShiny.RData')
+  
+  ### Guardo la tabla de dias mes y anio
+  
+  save(dsma, file = 'Shiny/Insumos/XXX_dsma.RData')
   
   #### Actualiaza datos cargados
   save(jamDatosShiny,file = 'BasesActualiza/jamDatosShiny.RData')

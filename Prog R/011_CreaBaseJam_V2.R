@@ -40,7 +40,7 @@ arreglaCaracteres = function(x) {
 
 ######################################################
 ###### LEE base
-nameBase = '202112231648'
+nameBase = '202201191112'
 
 datos = read.table(paste0('Datos/etwazetrafficjam_',nameBase,'.csv'),sep = ',',header = T)
 
@@ -248,12 +248,12 @@ if((IndAgg | IndIni)) {
   puntosIni = datJam %>% dplyr::select(ID_Base,COD_NOMBRE) %>% 
     st_cast(.,'POINT') %>%
     group_by(ID_Base) %>%
-    slice_head()
+    slice_head() %>% suppressWarnings()
   
   puntosFin = datJam %>% dplyr::select(ID_Base,COD_NOMBRE) %>% 
     st_cast(.,'POINT') %>%
     group_by(ID_Base) %>%
-    slice_tail()
+    slice_tail() %>% suppressWarnings()
   
   
   #################################################
@@ -263,7 +263,7 @@ if((IndAgg | IndIni)) {
   
   segmProyPoint = segmProy %>% 
     st_as_sf(.,wkt = 'geometry',crs = 32721) %>% 
-    st_cast(.,'POINT')
+    st_cast(.,'POINT') %>% suppressWarnings()
   
   
   

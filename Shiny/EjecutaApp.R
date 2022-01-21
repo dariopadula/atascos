@@ -39,6 +39,7 @@ gray6 = c('#BDBDBD','#848484','#6E6E6E','#585858','#2E2E2E','#151515')
 
 load('Shiny/Insumos/XXX_DatosShiny.RData')
 load('Shiny/Insumos/XXX_DatosShinyCortes.RData')
+load('Shiny/Insumos/XXX_dsma.RData')
 load('Resultados/002_listSHPServicios.RData')
 
 ###### Data frame nombre variables 
@@ -60,5 +61,5 @@ rownames(nomVarsDF_s) = as.character(nomVarsDF$nomShow)
 
 ###########################################
 ###### EJECUTA APP
-runApp('Shiny/App04',launch.browser = TRUE)
+runApp('Shiny/App05',launch.browser = TRUE)
 
