@@ -7,10 +7,10 @@ ui <- dashboardPage(
     fluidRow(
       column(6,
       selectizeInput('varAnio',label = 'Año',c(unique(dsma$anio),'ALL'),selected = 'ALL', 
-                     multiple = FALSE, options = list('plugins' = list('remove_button')))),
+                     multiple = TRUE, options = list('plugins' = list('remove_button')))),
       column(6,
              selectizeInput('varMes',label = 'Mes',c(unique(dsma$mes),'ALL'),selected = 'ALL', 
-                            multiple = FALSE, options = list('plugins' = list('remove_button'))))
+                            multiple = TRUE, options = list('plugins' = list('remove_button'))))
       ),
       selectizeInput('varFinde',label = 'Fin de semana',c(unique(dsma$finDeSem),'ALL'),selected = 'ALL', 
                      multiple = FALSE, options = list('plugins' = list('remove_button'))),
@@ -55,7 +55,14 @@ ui <- dashboardPage(
     tabsetPanel(
       tabPanel('Mapa',icon = icon("fas fa-globe-europe"),
         fluidRow(
-          tableOutput('tablaFiltros'),
+          column(9,
+            box(title = "Filtros aplicados", width = 16, solidHeader = F, 
+                status = "primary",collapsible = T, collapsed = T, 
+            tableOutput('tablaFiltros'))),
+          column(3,
+             box(title = "Totales días y horas", width = 16, solidHeader = F, 
+                 status = "primary",collapsible = T, collapsed = T, 
+                 tableOutput('tablaRangos'))),
           leafletOutput("distPlot",width="100%",height="700px")
         )
       ),
@@ -91,12 +98,12 @@ ui <- dashboardPage(
               fluidRow(
                 column(2,
                        selectizeInput('varAnioHeat',label = 'Año',c(unique(dsma$anio),'ALL'),selected = 'ALL', 
-                                      multiple = FALSE, options = list('plugins' = list('remove_button'))),
+                                      multiple = TRUE, options = list('plugins' = list('remove_button'))),
                        actionButton('run2', 'Run Heat', icon = icon("refresh"))
                 ),
                 column(2,
                        selectizeInput('varMesHeat',label = 'Mes',c(unique(dsma$mes),'ALL'),selected = 'ALL', 
-                                      multiple = FALSE, options = list('plugins' = list('remove_button')))
+                                      multiple = TRUE, options = list('plugins' = list('remove_button')))
                 ),
                 column(2,
                        selectizeInput('varFindeHeat',label = 'Fin de semana',c(unique(dsma$finDeSem),'ALL'),selected = 'ALL', 

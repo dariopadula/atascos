@@ -81,13 +81,18 @@ diasIntercept <- reactive({
 
     diasIntercept = diasIntercept()
     
+    diaSemana = dsma[diasIntercept,] %>% arrange(levelDia) %>% 
+      select(diaSem) %>% data.frame()
+    
     choAnio<-c("ALL",unique(dsma[diasIntercept,'anio']))
     choMes<-c("ALL",unique(dsma[diasIntercept,'mes']))
     choFinde<-c("ALL",unique(dsma[diasIntercept,'finDeSem']))
-    choDiaSem<-c("ALL",unique(dsma[diasIntercept,'diaSem']))
+    choDiaSem<-c("ALL",unique(diaSemana$diaSem))
     choDiaEsp<-c("ALL",unique(dsma[diasIntercept,'diaStr']))
     
 
+    
+    
     updateSelectInput(session,"varAnio",choices=choAnio,selected=input$varAnio)
     updateSelectInput(session,"varMes",choices=choMes,selected=input$varMes)
     updateSelectInput(session,"varFinde",choices=choFinde,selected=input$varFinde)
@@ -122,10 +127,33 @@ output$tablaFiltros = renderTable({
   diasEspP = paste(diasEsp,collapse = '/')
   NivelP = paste(Nivel,collapse = '/')
   
-  res = data.frame(Anio = anioP,Mes = mesP,FinSemana = finde,
-                   DiasSemana = diasSemP,DiasEsp = diasEspP,Nivel = NivelP,
-                   HoraIni = tini,horaFin = tfin)
+  res = data.frame(Anio = anioP,Mes = mesP,finDeSem = finde,
+                   diaSem = diasSemP,diaStr = diasEspP,Nivel = NivelP,
+                   HoraIni = tini,HoraFin = tfin)
+  
+  colnames(res) = nomVarsDF_b[colnames(res),'nomShow']
   res
+})
+
+
+#### Tabla que resume la cantidad de dias considerados y el total de horas
+
+output$tablaRangos = renderTable({
+  
+  # Rango horario
+  minHoraIni = intTiempo()[['minHoraIni']]
+  minHoraFin = intTiempo()[['minHoraFin']]
+  
+  diasIntercept = diasIntercept()
+  nDias = length(diasIntercept)
+  
+  horas = round(nDias*((minHoraFin - minHoraIni)/60),2)
+  
+  res = data.frame(nDias,horas)
+  colnames(res) = c('# Días','Total Horas')
+  
+  res
+  
 })
 
 ##################################################
@@ -552,10 +580,14 @@ observe({
   
   diasIntercept = diasInterceptHeat()
   
+  diaSemana = dsma[diasIntercept,] %>% arrange(levelDia) %>% 
+    select(diaSem) %>% data.frame()
+  
+  
   choAnio<-c("ALL",unique(dsma[diasIntercept,'anio']))
   choMes<-c("ALL",unique(dsma[diasIntercept,'mes']))
   choFinde<-c("ALL",unique(dsma[diasIntercept,'finDeSem']))
-  choDiaSem<-c("ALL",unique(dsma[diasIntercept,'diaSem']))
+  choDiaSem<-c("ALL",unique(diaSemana$diaSem))
   choDiaEsp<-c("ALL",unique(dsma[diasIntercept,'diaStr']))
   
   
@@ -594,33 +626,6 @@ datFiltro_heat = eventReactive(input$run2, {
 })
 
 
-# datFiltro_heat = eventReactive(input$run2, {
-#   
-#   datFiltro = datJam_df
-#   
-#   
-#   ### FIn de semana
-#   if(!("ALL" %in% input$varFindeHeat  | is.null(input$varFindeHeat))) {
-#     datFiltro = subset(datFiltro, finDeSem %in% input$varFindeHeat)
-#   }
-#   
-#   ### Dia de semana
-#   if(!("ALL" %in% input$varDiaSemHeat  | is.null(input$varDiaSemHeat))) {
-#     datFiltro = subset(datFiltro, diaSem %in% input$varDiaSemHeat)
-#   }
-#   
-#   ### Dia calendario
-#   if(!("ALL" %in% input$varDiaEspHeat  | is.null(input$varDiaEspHeat))) {
-#     datFiltro = subset(datFiltro, as.character(diaStr) %in% input$varDiaEspHeat)
-#   }
-#   
-#   ### Nivel
-#   if(!("ALL" %in% input$varNivelHeat  | is.null(input$varNivelHeat))) {
-#     datFiltro = subset(datFiltro, as.character(level) %in% input$varNivelHeat)
-#   }
-#   
-#   return(datFiltro)
-# })
 
 
 datFull = eventReactive(input$run2, {
