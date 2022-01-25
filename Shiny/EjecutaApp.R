@@ -46,12 +46,17 @@ load('Resultados/002_listSHPServicios.RData')
 
 nomVarsDF = data.frame(nomBase = c('street','count','delayMean','level45',
                                    'level345','levelMean','speedkmhMean',
-                                   'lengthMean','timeStr'),
+                                   'lengthMean','timeStr',
+                                   'Anio','Mes','finDeSem','diaSem',
+                                   'diaStr','Nivel','HoraIni','HoraFin'),
                        nomShow = c('Calle','Nro eventos','Delay Medio',
                                    'Total nivel 4 o +','Total nivel 3 o +','Nivel Medio',
-                                   'Velocidad km/h Medio','Largo Medio','Hora Media')
+                                   'Velocidad km/h Medio','Largo Medio','Hora Media',
+                                   'Año','Mes','Fin de Semana','Día semana',
+                                   'Día calendario','Niveles','Hora Inicio','Hora Fin')
                        )
                     
+
 
 nomVarsDF_b = nomVarsDF
 rownames(nomVarsDF_b) = as.character(nomVarsDF$nomBase)
