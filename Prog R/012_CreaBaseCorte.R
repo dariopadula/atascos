@@ -58,8 +58,9 @@ vias = st_read('SHP/v_mdg_vias')
 
 datCorAux = datCor %>% mutate(datecreated = as.POSIXct(strptime(datecreated, "%Y-%m-%d %H:%M:%S")),
                            datemodified = as.POSIXct(strptime(datemodified, "%Y-%m-%d %H:%M:%S")),
-                           datepublished = as.POSIXct(strptime(datepublished, "%Y-%m-%d %H:%M:%S"))) %>%
-  filter(datepublished >= as.POSIXct(strptime('2021-11-29 00:00:01', "%Y-%m-%d %H:%M:%S")))
+                           datepublished = as.POSIXct(strptime(datepublished, "%Y-%m-%d %H:%M:%S"))) 
+# %>%
+#   filter(datepublished >= as.POSIXct(strptime('2021-11-29 00:00:01', "%Y-%m-%d %H:%M:%S")))
 
 
 # aux = datCor %>% group_by(entity_id) %>% 
@@ -92,6 +93,8 @@ datCor = datCorAux %>% arrange(desc(entity_id),desc(datemodified)) %>%
   group_by(entity_id) %>%
   arrange(desc(datemodified)) %>%
   mutate(ID_EntityDia = row_number()) %>%
+  ungroup() %>% 
+  rowwise() %>% mutate(datecreated = max(c(datecreated,datepublished))) %>%
   ungroup() %>%
   arrange(entity_id,desc(ID_EntityDia)) %>%
   st_as_sf(.,wkt = 'geometry',crs = 4326) %>%

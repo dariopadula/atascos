@@ -40,7 +40,7 @@ arreglaCaracteres = function(x) {
 
 ######################################################
 ###### LEE base
-nameBase = '202201191112'
+nameBase = '20220207'
 
 datos = read.table(paste0('Datos/etwazetrafficjam_',nameBase,'.csv'),sep = ',',header = T)
 
@@ -88,9 +88,9 @@ if((IndAgg | IndIni)) {
   #############################################
   #### Paso las fecas de character a dates
   
-  datJam = datJam %>% mutate(datecreated = as.POSIXct(strptime(datecreated, "%Y-%m-%d %H:%M:%S")),
-                             datemodified = as.POSIXct(strptime(datemodified, "%Y-%m-%d %H:%M:%S")),
-                             datepublished = as.POSIXct(strptime(datepublished, "%Y-%m-%d %H:%M:%S")))
+  datJam = datJam %>% mutate(datecreated = as.POSIXct(strptime(gsub('T',' ',datecreated), "%Y-%m-%d %H:%M:%S")),
+                             datemodified = as.POSIXct(strptime(gsub('T',' ',datemodified), "%Y-%m-%d %H:%M:%S")),
+                             datepublished = as.POSIXct(strptime(gsub('T',' ',datepublished), "%Y-%m-%d %H:%M:%S")))
   
   ##### Filtro de fecha
   
@@ -103,6 +103,9 @@ if((IndAgg | IndIni)) {
     datJam = datJam  %>%
       filter(datepublished > maxDate | datepublished < minDate)
     
+    datJam = datJam  %>%
+      filter(datepublished >= as.POSIXct(strptime('2021-11-29 00:00:01', "%Y-%m-%d %H:%M:%S")))
+    
     if(nrow(datJam) == 0) {
       stop("No hay eventos posteriores ni anteriores para agregar")
     }
@@ -113,8 +116,8 @@ if((IndAgg | IndIni)) {
   ### del Centroide y de los extremos del segemnto
   datJam = datJam %>% arrange(desc(entity_id),desc(datemodified)) %>% 
     getLineGeomV2(.) %>% 
-    dplyr::select(-city,-country,-location_centroid,-location,-entity_type,-fiware_servicepath,-pubmillis,-turntype) %>%
-    mutate(diaStr = substr(datemodified,1,10),
+    dplyr::select(-any_of(c('city','country','location_centroid','location','entity_type','fiware_servicepath','pubmillis','turntype'))) %>%
+        mutate(diaStr = substr(datemodified,1,10),
            diaSem = weekdays(datemodified),
            finDeSem = ifelse(diaSem %in% c('sábado','domingo'),'Fin de semana','Lunes a viernes'),
            hora = hour(datemodified),
@@ -360,8 +363,13 @@ if((IndAgg | IndIni)) {
   datJam$nomBase = nameBase
 
   if(IndAgg) {
-    datJamDir = rbind(datJamDirPrev,datJamDir)
-    datJam = rbind(datJamPrev,datJam)  
+    
+    nomDatJam = intersect(colnames(datJam),colnames(datJamPrev))
+    datJam = rbind(datJamPrev[,nomDatJam],datJam[,nomDatJam])  
+    
+    nomDatJamDir = intersect(colnames(datJamDir),colnames(datJamDirPrev))
+    datJamDir = rbind(datJamDirPrev[,nomDatJamDir],datJamDir[,nomDatJamDir])
+    
   }
   ########################################
   ####### GUarda las bases con y sin direccion
