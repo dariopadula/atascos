@@ -2,8 +2,8 @@ getLineGeomV2 = function(dat,varName = 'location',nomGeom = 'geometry') {
   
   x = dat[,varName]
   
-  coords = gsub('\\{coordinates=\\[\\[','',x)
-  coords = gsub('\\]\\]\\, type=LineString\\}','',coords)
+  coords = gsub('\\{coordinates=\\[\\[|\\{\\\\coordinates\\\\:\\[\\[','',x)
+  coords = gsub('\\]\\]\\, type=LineString\\}|\\]\\]\\,\\\\type\\\\:\\\\LineString\\\\\\}','',coords)
   coords = gsub(' ','',coords)
   coords = strsplit(coords,'\\],\\[')
   

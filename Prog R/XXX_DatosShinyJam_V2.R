@@ -135,17 +135,46 @@ if((IndAgg | IndIni)) {
   
   rownames(dsma) = dsma$diaStr
   
+  
+  ##############################################
+  ##### Tabla para resumen de la base
+  
+  datJam_resum = datJam_df %>% 
+    mutate(
+      tiempoMP = as.numeric(difftime(datemodified,datepublished,units = 'mins')),
+      diaMes = substr(diaStr,1,7)) %>% 
+    group_by(entity_id,street) %>%
+    summarise(count = n(),
+              diaMes = last(diaMes),
+              tiempoMP = max(tiempoMP),
+              delay = mean(delay,na.rm = T),
+              speedkmh = mean(speedkmh,na.rm = T),
+              level = max(level,na.rm = T)) %>%
+    ungroup() %>%
+    mutate(duracionEv = ifelse(abs(tiempoMP - 2*count) > 2,2*count,tiempoMP)) %>%
+    suppressMessages()
+  
+  
   #########################################################
   ########### GUardo insumos shiny
   
   save(datJam_df,datJamSegm_df,segmentUnic, file = 'Shiny/Insumos/XXX_DatosShiny.RData')
   
+  #### GUARDO COMO RDS
+  # saveRDS(datJam_df,'Shiny/Insumos/datJam_df.RDS')
+  # saveRDS(datJamSegm_df,'Shiny/Insumos/datJamSegm_df.RDS')
+  # saveRDS(segmentUnic,'Shiny/Insumos/segmentUnic.RDS')
   ### Guardo la tabla de dias mes y anio
   
   save(dsma, file = 'Shiny/Insumos/XXX_dsma.RData')
   
+  ### Guarda base para hacer el resumen de la base
+  
+  save(datJam_resum, file = 'Shiny/Insumos/XXX_datJam_resum.RData')
+  
   #### Actualiaza datos cargados
   save(jamDatosShiny,file = 'BasesActualiza/jamDatosShiny.RData')
+  
 } else {
   print('Todas las bases que figuran en la base de jam ya fueron segmentizadas')
 }

@@ -50,8 +50,8 @@ simplificaCalleV2 = function(auxCalle,cellsizeMax = 500,npart = 10,distSegm = 15
   }
   
   
-  # plot(gridd)
-  # plot(st_cast(aux,'POINT')[,1],add = T)
+  
+
   
   # Transforma la grilla en sf
   gridd = st_as_sf(data.frame(gridd),sf_column_name = 'geometry')
@@ -65,10 +65,13 @@ simplificaCalleV2 = function(auxCalle,cellsizeMax = 500,npart = 10,distSegm = 15
   puntosMedio = aggregate(puntos[,c('X','Y')], gridd, mean, 
                           join = function(x, y) st_is_within_distance(x, y, dist = 0))
   
+  
   #### Saca los cuadrantes donde no hay puntos y construye un sf de puntos con los puntos promedios
   res = puntosMedio %>% filter(!is.na(X)) %>% st_set_geometry(NULL) %>%
     st_as_sf(.,coords = c('X','Y'),crs = 32721)
   
+  
+ 
   ## Agrego a res los puntos de inicio y fin, simpre y cuando ya no esten en res
   IndIni = as.numeric(min(st_distance(pinicio,res))) > 0
   IndFin = as.numeric(min(st_distance(pfin,res))) > 0 
@@ -106,6 +109,11 @@ simplificaCalleV2 = function(auxCalle,cellsizeMax = 500,npart = 10,distSegm = 15
   
   
   linea = cbind(linea,datCalle)
+  
+  # plot(gridd)
+  # plot(puntos,add = T)
+  # plot(res,add = T,col = 'red')
+  # plot(st_geometry(linea),add = T)
   ## Segmentiza la linea
   
   df = data.frame(st_line_sample(linea, density = 1/distSegm) %>% st_cast("POINT")) %>% 
