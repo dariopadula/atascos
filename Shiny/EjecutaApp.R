@@ -63,10 +63,10 @@ nomVarsDF = data.frame(nomBase = c('street','count','delayMean','level45',
                                    'lengthMean','timeStr',
                                    'Anio','Mes','finDeSem','diaSem',
                                    'diaStr','Nivel','HoraIni','HoraFin'),
-                       nomShow = c('Calle','Nro eventos','Delay Medio',
+                       nomShow = c('Calle','Nro eventos','Demora media (segundos)',
                                    'Total nivel 4 o +','Total nivel 3 o +','Nivel Medio',
-                                   'Velocidad km/h Medio','Largo Medio','Hora Media',
-                                   'Año','Mes','Fin de Semana','Día semana',
+                                   'Velocidad km/h Medio','Largo Medio (metros)','Hora Media',
+                                   'Año','Mes','Tipo de día','Día semana',
                                    'Día calendario','Niveles','Hora Inicio','Hora Fin')
                        )
                     
@@ -80,7 +80,7 @@ rownames(nomVarsDF_s) = as.character(nomVarsDF$nomShow)
 
 ###########################################
 ###### EJECUTA APP
-runApp('Shiny/App07',launch.browser = TRUE)
+runApp('Shiny/App09',launch.browser = TRUE)
 
 
 # https://towardsdatascience.com/create-interactive-map-applications-in-r-and-r-shiny-for-exploring-geospatial-data-96b0f9692f0f

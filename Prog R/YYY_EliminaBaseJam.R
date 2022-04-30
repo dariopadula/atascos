@@ -21,7 +21,7 @@ fun = fun[grep('\\.R',fun,ignore.case = T)]
 for(ii in fun) source(paste0('Funciones/',ii))
 
 
-baseElim = c("20220207")
+baseElim = c('01_31_032022')
 
 ##### Carga Las base a depurar
 ########################################
