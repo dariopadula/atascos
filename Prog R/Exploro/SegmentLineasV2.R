@@ -114,6 +114,8 @@ if(nrow(pruebaInt) > 0) {
 intCallesDF = as.data.frame(data.table::rbindlist(listIntCalles)) %>% 
   st_as_sf(.,sf_column_name = 'geometry')
 
+
+save(intCallesDF,file = 'Prog R/Exploro/BasesIntermedias/intCallesDF.RData')
 ###########################################################
 
 
@@ -146,7 +148,7 @@ CallesEsqDF = as.data.frame(data.table::rbindlist(listaCallesEsq)) %>%
   st_as_sf(.,sf_column_name = 'geometry')
 
 
-
+save(CallesEsqDF,file = 'Prog R/Exploro/BasesIntermedias/CallesEsqDF.RData')
 #############################################
 ####### Asigna paradas a puntos
 callesParadas = sort(unique(paradasUni$COD_CALLE1))
@@ -178,6 +180,8 @@ for(ii in callesParadas) {
 
 puntoPar = as.data.frame(data.table::rbindlist(puntoParList))
 
+
+save(puntoPar,file = 'Prog R/Exploro/BasesIntermedias/puntoPar.RData')
 ####################################
 ##### VECINOS MAS CERCANOS A LAS INTERSECCIONES
 
@@ -258,11 +262,14 @@ puntosIntUniqDep = puntosIntUniqDep %>% st_as_sf(.,coords = c('X','Y'),crs = 327
 
 puntoUniAll = rbind(puntosIntUniqDep,puntoFaltsUniq[,names(puntosIntUniq)])
 
-
+save(puntoUniAll,file = 'Prog R/Exploro/BasesIntermedias/puntoUniAll.RData')
 
 asignaAll = sonInter  %>% st_set_geometry(NULL) %>%
   rbind(.,faltanFin[,names(sonInter)] %>% st_set_geometry(NULL)) %>% 
   arrange(COD_NOMBRE,ID_calle) %>% mutate(COD_UBIC_P = -1)
+
+
+save(asignaAll,file = 'Prog R/Exploro/BasesIntermedias/asignaAll.RData')
 
 asignaAll0 = rbind(asignaAll[,colnames(puntoPar)],puntoPar) %>% 
   group_by(COD_NOMBRE,ID_calle) %>%
@@ -292,18 +299,16 @@ segmCalles = asignaAll0 %>% group_by(COD_NOMBRE,ID_punto) %>% slice_head() %>%
   st_as_sf(.,wkt = c('geometry'),crs = 32721) %>%
   st_transform(x = .,crs = 4326)
   
-  
+save(segmCalles,file = 'Prog R/Exploro/BasesIntermedias/segmCalles.RData')
 
 
-segmCallesCentrid = st_centroid(segmCalles) %>% st_transform(x = .,crs = 32721)
+segmCallesCentrid = st_centroid(segmCalles) %>% st_transform(x = .,crs = 32721) %>%
+  suppressWarnings()
 segmCallesCentrid_lf = segmCallesCentrid %>% st_transform(x = .,crs = 4326)
 
+segmCallesPuntos = segmCalles %>% st_cast(x = .,'POINT') %>% st_transform(x = .,crs = 32721)
 
 
-tab = table(res$NOM_CALLE)  
-calleRef =  names(tab)[tab >= 6] 
-
-resb = res %>% filter(NOM_CALLE %in% calleRef)
 
 vias_sf = vias  %>%  st_transform(x = ., crs = 4326)
 
@@ -318,12 +323,12 @@ ff = puntoUniAll %>%  st_transform(x = ., crs = 4326)
 pp = leaflet() %>% # ABRE LA VENTANA PARA HACER EL MAPA
   addTiles(group = "OSM") %>% # DEFINE UN FONDO (POR DEFECTO OSM)
   addProviderTiles(providers$CartoDB.DarkMatter, group = 'CartoDB.Positron') %>%
-  # addCircles(data = pruebaInt) %>%
-  # addCircles(data = bb,
-  #            popup=~content) %>%
-  addCircles(data = segmCallesCentrid_lf,
+  addPolylines(data = segmCalles,
+               color = 'red',
+               weight = 4) %>%
+  addCircles(data = paradasUni %>% st_transform(x = .,crs = 4326),
              color = 'orange',
-             weight = 0.5) %>%
+             weight = 1)
   # addCircles(data = ff,
   #            color = 'orange',
   #            weight = 1) %>%
@@ -331,9 +336,7 @@ pp = leaflet() %>% # ABRE LA VENTANA PARA HACER EL MAPA
   # addPolylines(data = lineasDF_lf,
   #              color = 'red',
   #              weight = 0.3) %>%
-  addPolylines(data = segmCalles,
-               color = 'red',
-               weight = 1)
+  
 
 # %>%
 #   addCircles(data = ccalle)
@@ -394,16 +397,17 @@ for(ii in varMaximal) {
 
 names(seqCallesVar) = as.character(varMaximal)
   
-
+save(seqCallesVar,file = 'Prog R/Exploro/BasesIntermedias/seqCallesVar.RData')
 ######################################################
 ######## ENcuentra secuencia de segmentos
 
+names(seqCallesVar)
+hh = 8860
 
-hh = 8552
 useCalle = seqCallesVar[[as.character(hh)]]
 
 
-df = data.frame(st_line_sample(subset(lineasNewRef,cod_variante == hh), density = 1/10) %>% st_cast("POINT")) %>% 
+df = data.frame(st_line_sample(subset(lineasNewRef,cod_variante == hh), density = 1/5) %>% st_cast("POINT")) %>% 
   st_as_sf(.,sf_column_name = 'geometry',crs = 32721) %>% mutate(ID_lin = row_number(),
                                                                  cod_variante = hh)
 
@@ -415,13 +419,35 @@ match = do.call(rbind,
                   codCalle = as.character(useCalle[xx,'COD_NOMBRE'])
                   NumCalle = as.numeric(useCalle[xx,'seqCalle'])
                   aux = subset(segmCallesCentrid,COD_NOMBRE == codCalle)
+                  # aux = subset(segmCallesPuntos,COD_NOMBRE == codCalle)
                   
                   # linAux = subset(linaVar,COD_CALLE1 == codCalle)
                   
+                  distnn <- df %>% nngeo::st_nn(aux, maxdist= 30,k=1,sparse = T,returnDist = T) %>%
+                    suppressMessages()
+                   
+                  distnn = do.call(c,lapply(distnn[[2]],function(xx) {
+                    if(is_empty(xx)) {
+                      return(NA)
+                    } else {
+                      return(xx)
+                  }
+                    })
+                  )
+                  
                   matchAux <- df %>% 
                     st_join(aux, join=nngeo::st_nn, maxdist= 30,k=1) %>% 
+                    cbind(.,distnn) %>%
                     filter(!is.na(COD_NOMBRE)) %>%
                     suppressMessages()
+                  
+                  ###########
+                  ## Descarta segmentos que no tiene al menos dos puntos
+                  # segKeep = matchAux %>% group_by(ID_segm) %>%
+                  #   summarise(n = n()) %>% ungroup() %>%
+                  #   filter(n > 1)
+                  # 
+                  # matchAux = matchAux %>% filter(ID_segm %in% segKeep$ID_segm)
                   
                   matchAux$NumCalle = NumCalle
                   # } 
@@ -429,26 +455,48 @@ match = do.call(rbind,
                 })
 )
 
-match = match %>% arrange(ID_lin)
+match = match %>% group_by(ID_lin) %>% 
+  slice_min(distnn) %>%
+  arrange(ID_lin)
+
+
 
 
 AV = nomCalles[grep('av |BV |RBLA ',nomCalles$NOM_CALLE,ignore.case = T),]
 
+segLinea = segmCalles %>% 
+  inner_join(match %>% st_set_geometry(NULL) %>% dplyr::select(ID_segm,ID_lin)) %>%
+  group_by(ID_calle,COD_NOMBRE,ID_segm) %>% slice_head() %>% ungroup() %>%
+  arrange(ID_lin) %>%
+  mutate(content = paste(sep = "<br/>",
+                         paste("<b><a >Calle</a></b>:",NOM_CALLE),
+                         paste("<b><a >ID segm</a></b>:",ID_segm),
+                         paste("<b><a >ID Calle</a></b>:",ID_calle),
+                         paste("<b><a >ID_lin</a></b>:",ID_lin)))
+
+
+nomCalles[grep('canelones',nomCalles$NOM_CALLE,ignore.case = T),]
+
+codCalle = 1545
+
 pp = leaflet() %>% # ABRE LA VENTANA PARA HACER EL MAPA
   addTiles(group = "OSM") %>% # DEFINE UN FONDO (POR DEFECTO OSM)
   addProviderTiles(providers$CartoDB.DarkMatter, group = 'CartoDB.Positron') %>%
-  # addPolylines(data = segmCalles %>% filter(ID_segm %in% match$ID_segm),
-  #              color = 'red',
-  #              weight = 3) %>%
-  addPolylines(data = segmCalles,
+  addPolylines(data = segLinea,
                color = 'red',
-               weight = 3) %>%
-  addPolylines(data = segmCalles %>% filter(COD_NOMBRE %in% c(AV$COD_NOMBRE)),
-               color = 'green',
-               weight = 3) %>%
-  addPolylines(data = vias_sf %>% filter(COD_NOMBRE %in% c(AV$COD_NOMBRE)),
-               color = 'orange',
-               weight = 1) %>%
+               weight = 4,popup = ~content) %>%
+  # addPolylines(data = segmCalles %>% filter(COD_NOMBRE == codCalle),
+  #              color = 'green',
+  #              weight = 3) %>%
+  # addPolylines(data = vias_sf %>% filter(COD_NOMBRE == codCalle),
+  #              color = 'pink',
+  #              weight = 1) %>%
+  # addPolylines(data = segmCalles %>% filter(COD_NOMBRE %in% c(AV$COD_NOMBRE)),
+  #              color = 'green',
+  #              weight = 3) %>%
+  # addPolylines(data = vias_sf %>% filter(COD_NOMBRE %in% c(AV$COD_NOMBRE)),
+  #              color = 'orange',
+  #              weight = 1) %>%
   # addCircles(data = segmCallesCentrid %>%  
   #              st_transform(x = ., crs = 4326)) %>%
   addPolylines(data = subset(lineasNew_sf,cod_variante == hh),
@@ -479,3 +527,18 @@ addPolylines(data = lineasNew_sf[num,],
 #   addCircles(data = ccalle)
 pp
 
+
+pp = leaflet() %>% # ABRE LA VENTANA PARA HACER EL MAPA
+  addTiles(group = "OSM") %>% # DEFINE UN FONDO (POR DEFECTO OSM)
+  addProviderTiles(providers$CartoDB.DarkMatter, group = 'CartoDB.Positron') %>%
+  addPolylines(data = segmCalles,
+               color = 'red',
+               weight = 4) %>%
+  addPolylines(data = lineasNew_sf %>% filter(cod_variante %in% varMaximal),
+               color = 'blue',
+               weight = 2,
+               popup = ~cod_variante) %>%
+  addCircles(data = paradasUni %>% st_transform(x = .,crs = 4326),
+             color = 'orange',
+             weight = 1)
+pp

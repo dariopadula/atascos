@@ -23,7 +23,7 @@ simplificaCalleV2 = function(auxCalle,cellsizeMax = 500,npart = 10,distSegm = 15
     suppressMessages()
   
   ### Pasa la calle a un conjunto de puntos
-  puntos = st_cast(auxCalle,'POINT')
+  puntos = st_cast(auxCalle,'POINT') %>% suppressWarnings()
   
   ### Encuentra los puntos extremos para tomar como inicio y luego un posible fin
   distBox = st_distance(puntos,box_df)
