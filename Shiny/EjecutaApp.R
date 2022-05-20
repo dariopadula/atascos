@@ -3,7 +3,8 @@
 
 libNecesarias = c('shiny','tidyverse','ggplot2','dplyr','ggrepel','shinydashboard','DT',
                   'formattable','gtools','MASS','sf','nngeo',
-                  'mgcv','ggpubr','gridExtra','leaflet.extras','viridis','ggExtra','plotly')
+                  'mgcv','ggpubr','gridExtra','leaflet.extras','viridis','ggExtra','plotly',
+                  'fst')
 
 
 
@@ -38,7 +39,12 @@ gray6 = c('#BDBDBD','#848484','#6E6E6E','#585858','#2E2E2E','#151515')
 ##### CARGA DATOS
 
 # Base con los datos de Jam
-load('Shiny/Insumos/XXX_DatosShiny.RData')
+# load('Shiny/Insumos/XXX_DatosShiny.RData')
+datJamSegm_df = read.fst("Shiny/Insumos/datJamSegm_df.fst")
+datJam_df = read.fst("Shiny/Insumos/datJam_df.fst")
+
+load('Shiny/Insumos/XXX_segmentUnic.RData')
+
 # Base con los datos de Cortes
 load('Shiny/Insumos/XXX_DatosShinyCortes.RData')
 # Base con los datos de AutoScop
@@ -48,7 +54,8 @@ load('Shiny/Insumos/XXX_dsma.RData')
 # Lista con shapes de servicios a incluir
 load('Resultados/002_listSHPServicios.RData')
 # Base para hacer el resumen
-load('Shiny/Insumos/XXX_datJam_resum.RData')
+# load('Shiny/Insumos/XXX_datJam_resum.RData')
+datJam_resum = read.fst("Shiny/Insumos/datJam_resum.fst")
 # datJam_df = readRDS('Shiny/Insumos/datJam_df.RDS')
 # datJamSegm_df = readRDS('Shiny/Insumos/datJamSegm_df.RDS')
 # segmentUnic = readRDS('Shiny/Insumos/segmentUnic.RDS')

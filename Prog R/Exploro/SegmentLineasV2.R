@@ -325,10 +325,11 @@ pp = leaflet() %>% # ABRE LA VENTANA PARA HACER EL MAPA
   addProviderTiles(providers$CartoDB.DarkMatter, group = 'CartoDB.Positron') %>%
   addPolylines(data = segmCalles,
                color = 'red',
-               weight = 4) %>%
-  addCircles(data = paradasUni %>% st_transform(x = .,crs = 4326),
-             color = 'orange',
-             weight = 1)
+               weight = 4) 
+# %>%
+#   addCircles(data = paradasUni %>% st_transform(x = .,crs = 4326),
+#              color = 'orange',
+#              weight = 1)
   # addCircles(data = ff,
   #            color = 'orange',
   #            weight = 1) %>%
@@ -402,8 +403,8 @@ save(seqCallesVar,file = 'Prog R/Exploro/BasesIntermedias/seqCallesVar.RData')
 ######## ENcuentra secuencia de segmentos
 
 names(seqCallesVar)
-hh = 8860
-
+# hh = 8860
+hh = 98
 useCalle = seqCallesVar[[as.character(hh)]]
 
 
@@ -475,9 +476,9 @@ segLinea = segmCalles %>%
                          paste("<b><a >ID_lin</a></b>:",ID_lin)))
 
 
-nomCalles[grep('canelones',nomCalles$NOM_CALLE,ignore.case = T),]
+nomCalles[grep('rivera',nomCalles$NOM_CALLE,ignore.case = T),]
 
-codCalle = 1545
+codCalle = 6051
 
 pp = leaflet() %>% # ABRE LA VENTANA PARA HACER EL MAPA
   addTiles(group = "OSM") %>% # DEFINE UN FONDO (POR DEFECTO OSM)
@@ -491,7 +492,7 @@ pp = leaflet() %>% # ABRE LA VENTANA PARA HACER EL MAPA
   # addPolylines(data = vias_sf %>% filter(COD_NOMBRE == codCalle),
   #              color = 'pink',
   #              weight = 1) %>%
-  # addPolylines(data = segmCalles %>% filter(COD_NOMBRE %in% c(AV$COD_NOMBRE)),
+  # addPolylines(data = segmCalles %>% filter(COD_NOMBRE %in% codCalle),
   #              color = 'green',
   #              weight = 3) %>%
   # addPolylines(data = vias_sf %>% filter(COD_NOMBRE %in% c(AV$COD_NOMBRE)),

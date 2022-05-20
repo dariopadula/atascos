@@ -106,7 +106,11 @@ datCor = datCorAux %>% arrange(desc(entity_id),desc(datemodified)) %>%
          minutoLastDia = minutoHora)
 
 
+dd = datCorAux[datCorAux$id == 'waze:jam:1167598302_2022-04-17 23:46:05',] 
+dd = datCorAux[datCorAux$entity_id == 'waze:jam:1167598302',] 
 
+
+dd = dd %>% arrange(desc(datemodified))
 ########################################
 ####### GUarda las bases con y sin direccion
 save(datCor,file = 'BasesR/011_datCor.RData')
