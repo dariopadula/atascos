@@ -232,9 +232,9 @@ datCorFiltro = eventReactive(input$run, {
                                    Peso = (refFin - refIni)/largoInter)
   
   ### Calle
-  if(!('Todo' %in% selCalle()  | is.null(selCalle()))) {
-    datFiltro = subset(datFiltro, street %in% selCalle())
-  }
+  # if(!('Todo' %in% selCalle()  | is.null(selCalle()))) {
+  #   datFiltro = subset(datFiltro, street %in% selCalle())
+  # }
   
   return(datFiltro)
 })
@@ -894,7 +894,7 @@ output$textPeriodo <- renderPrint({
   diaLast = dsma[nrow(dsma),'diaStr']
   
   res = HTML(paste0('<p>La información esta disponible desde el ',"<b>",diaFirst,' al ',diaLast,"</b></p>"))
-  # res = paste0(diaFirst,' al ',diaLast)
+
   res
   
 })

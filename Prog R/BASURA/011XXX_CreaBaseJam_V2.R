@@ -13,7 +13,6 @@ library(viridis)
 library(geojsonsf)
 library(rgdal)
 
-library(fst)
 
 
 ######################################################
@@ -46,39 +45,30 @@ arreglaCaracteres = function(x,tolower = T,sacPunto = T) {
 vias = st_read('SHP/v_mdg_vias')
 
 ######################################################
-#### Proyeccion de clles en segmentos (para calpular el sentido)
-load('Resultados/001_segmProy.RData')
-
-######################################################
 #### Identificador de bases
-allBases = c('202112141520','202112231648','202201191112','202202071004','07_08_022022',
-             '01_31_032022_P1','01_31_032022_P2','01_31_032022_P3','01_31_032022_P4',
-             '01_25_042022_P1','01_25_042022_P2','01_25_042022_P3',
-             '26_30_202204')
+allBases = c('202112141520','202112231648','202201191112','202202071004','07_08_022022','01_31_032022')
 
-# allBases = c('202112141520','202112231648','202201191112','202202071004','07_08_022022')
+if(file.exists('BasesActualiza/jamBaseNames.RData')) {
+  load('BasesActualiza/jamBaseNames.RData')
+  allBases = allBases[!allBases %in% jamBaseNames]
+}
 
-datJam_dfList = list()
-datJamSegm_dfList = list()
-segmentUnicList = list()
-
-indCambios = FALSE
-jamBaseNames = character()
 for(bb in allBases) {
   iniTime = Sys.time()
-  
   ######################################################
   ###### LEE base
   nameBase = bb
-
-
+  
+  print(paste0(Sys.time(),' :Lee datos de la bases ',nameBase))
+  datos = read.table(paste0('Datos/etwazetrafficjam_',nameBase,'.csv'),sep = ',',header = T)
+  print(paste0(Sys.time(),' :Final del proceso'))
+  
   ######################################
   ##### Registra las bases que se van poniendo
   ##### e indica si hay que calcular o no
   IndAgg = FALSE
   IndIni = FALSE
   ID_BaseRef = 0
-  
   if(file.exists('BasesActualiza/jamBaseNames.RData')) {
     load('BasesActualiza/jamBaseNames.RData')
     IndAgg = !nameBase %in% jamBaseNames
@@ -86,41 +76,29 @@ for(bb in allBases) {
     
     ###### Cargo las bases previas
     if(IndAgg) {
-      if(length(datJamSegm_dfList) == 0) {
-        load('Shiny/Insumos/XXX_DatosShiny.RData')
-        datJam_dfList[[1]] = datJam_df
-        datJamSegm_dfList[[1]] = datJamSegm_df %>% dplyr::select(-any_of('ID_segmento'))
-        segmentUnicList[[1]] = segmentUnic %>% dplyr::select(-any_of('ID_segmento'))
-      }
+      load('BasesR/011_datJam.RData')
+      datJamPrev = datJam
+      load('Resultados/011_datJamDir.RData')
+      datJamDirPrev = datJamDir
+      maxDate = max(datJamDir$datemodified)
+      minDate = min(datJamDir$datemodified)
+      ID_BaseRef = nrow(datJamPrev)
     }
   } else {
     IndIni = TRUE
-    jamBaseNames = c(jamBaseNames,nameBase)
+    jamBaseNames = nameBase
   }
   
-  
-  
-  if(length(datJam_dfList) > 0) {
-    maxDate = max(do.call(c,lapply(datJam_dfList, function(xx) max(xx$datemodified))))
-    minDate = min(do.call(c,lapply(datJam_dfList, function(xx) min(xx$datemodified))))
-  }
   
   ###################################
   ##### Si ya esta ingresada no se calcula
   
   if((IndAgg | IndIni)) {
     
-    indCambios = TRUE
-    
-    #### LEE BASE
-    print(paste0(Sys.time(),' :Lee datos de la bases ',nameBase))
-    datos = read.table(paste0('Datos/etwazetrafficjam_',nameBase,'.csv'),sep = ',',header = T)
-    print(paste0(Sys.time(),' :Final del proceso'))
-    
     print(paste0(Sys.time(),' :Arma base datJam'))
     #############################################
     #### Me quedo solo con los atascos
-    datJam = subset(datos,delay >= 0 & city == 'Montevideo')
+    datJam = subset(datos,delay >= 0)
     
 
     #############################################
@@ -134,15 +112,15 @@ for(bb in allBases) {
     
     if(IndIni) {
       datJam = datJam  %>%
-        filter(datemodified >= as.POSIXct(strptime('2021-11-29 00:00:01', "%Y-%m-%d %H:%M:%S")))
+        filter(datepublished >= as.POSIXct(strptime('2021-11-29 00:00:01', "%Y-%m-%d %H:%M:%S")))
     }
     
     if(IndAgg) {
       datJam = datJam  %>%
-        filter(datemodified > maxDate | datemodified < minDate)
+        filter(datepublished > maxDate | datepublished < minDate)
       
       datJam = datJam  %>%
-        filter(datemodified >= as.POSIXct(strptime('2021-11-29 00:00:01', "%Y-%m-%d %H:%M:%S")))
+        filter(datepublished >= as.POSIXct(strptime('2021-11-29 00:00:01', "%Y-%m-%d %H:%M:%S")))
       
       if(nrow(datJam) == 0) {
         stop("No hay eventos posteriores ni anteriores para agregar")
@@ -154,8 +132,7 @@ for(bb in allBases) {
     ### del Centroide y de los extremos del segemnto
     datJam = datJam %>% arrange(desc(entity_id),desc(datemodified)) %>% 
       getLineGeomV2(.) %>% 
-      dplyr::select(-any_of(c('city','country','location_centroid','location','entity_type','fiware_servicepath','pubmillis',
-                              'turntype',"location_centroid_lat","location_centroid_lon","blockingalertuuid"))) %>%
+      dplyr::select(-any_of(c('city','country','location_centroid','location','entity_type','fiware_servicepath','pubmillis','turntype'))) %>%
       mutate(diaStr = substr(datemodified,1,10),
              diaSem = weekdays(datemodified),
              finDeSem = ifelse(diaSem %in% c('sábado','domingo'),'Fin de semana','Lunes a viernes'),
@@ -305,7 +282,7 @@ for(bb in allBases) {
     #################################################
     ####### Agrega direccion
     
-    
+    load('Resultados/001_segmProy.RData')
     
     segmProyPoint = segmProy %>% 
       st_as_sf(.,wkt = 'geometry',crs = 32721) %>% 
@@ -363,7 +340,7 @@ for(bb in allBases) {
     
     #### Pego las direcciones y la info del inicio y fin a datJam
     
-    datJam = datJam %>% left_join(puntosAll %>% dplyr::select(-COD_NOMBRE), by = 'ID_Base') %>%
+    datJamDir = datJam %>% left_join(puntosAll %>% dplyr::select(-COD_NOMBRE), by = 'ID_Base') %>%
       mutate(IndShift = ifelse(ID_calle_Ini <= ID_calle_Fin,0,1),
              direction = ifelse(IndShift == 1,paste(dirFin,dirIni,sep = '_'),
                                 paste(dirIni,dirFin,sep = '_'))) 
@@ -372,39 +349,119 @@ for(bb in allBases) {
     print(paste0(Sys.time(),' :Final del proceso'))
     
     
-    aux = st_geometry(datJam)
+    aux = st_geometry(datJamDir)
     # calles no modificar
     
-    print(paste0(Sys.time(),' :Hace shift de los segmentos de acuerdo al sentido'))
+    print(paste0(Sys.time(),' :HAce shift de los segmentos de acuerdo al sentido'))
     
     cNoModif = c("av de las leyes","bv gral artigas")
     
     
-    cond = datJam$direction == "ESTE_OESTE" & !is.na(datJam$direction) & !datJam$NOM_CALLE %in% cNoModif
+    cond = datJamDir$direction == "ESTE_OESTE" & !is.na(datJamDir$direction) & !datJamDir$NOM_CALLE %in% cNoModif
     aux[cond] = aux[cond] + c(0,10)
     
-    cond = datJam$direction == "NORTE_SUR" & !is.na(datJam$direction) & !datJam$NOM_CALLE %in% cNoModif
+    cond = datJamDir$direction == "NORTE_SUR" & !is.na(datJamDir$direction) & !datJamDir$NOM_CALLE %in% cNoModif
     aux[cond] =   aux[cond] + c(-10,0)
     
-    cond = datJam$direction == "OESTE_ESTE" & !is.na(datJam$direction) & !datJam$NOM_CALLE %in% cNoModif
+    cond = datJamDir$direction == "OESTE_ESTE" & !is.na(datJamDir$direction) & !datJamDir$NOM_CALLE %in% cNoModif
     aux[cond] = aux[cond] + c(0,-10)
     
-    cond = datJam$direction == "SUR_NORTE" & !is.na(datJam$direction) & !datJam$NOM_CALLE %in% cNoModif
+    cond = datJamDir$direction == "SUR_NORTE" & !is.na(datJamDir$direction) & !datJamDir$NOM_CALLE %in% cNoModif
     aux[cond] = aux[cond] + c(10,0)
     
     
-    st_geometry(datJam) = aux
+    st_geometry(datJamDir) = aux
     
     print(paste0(Sys.time(),' :Final del proceso'))
     
- 
-###################################################    
-###################################################
+    ###### Agrego el nombre de la base
+    print(paste0(Sys.time(),' :Adjunta nueva base a las anteriores'))
     
+    datJamDir$nomBase = nameBase
+    datJam$nomBase = nameBase
+    
+    if(IndAgg) {
+      
+      datJam$street = arreglaCaracteres(datJam$street,F,F)
+      nomDatJam = intersect(colnames(datJam),colnames(datJamPrev))
+      datJam = rbind(datJamPrev[,nomDatJam],datJam[,nomDatJam])  
+      
+      datJamDir$street = arreglaCaracteres(datJamDir$street,F,F)
+      nomDatJamDir = intersect(colnames(datJamDir),colnames(datJamDirPrev))
+      datJamDir = rbind(datJamDirPrev[,nomDatJamDir],datJamDir[,nomDatJamDir])
+      
+    }
+    
+    print(paste0(Sys.time(),' :Final del proceso'))
+    ########################################
+    print(paste0(Sys.time(),' :Guardando las bases'))
+    ####### GUarda las bases con y sin direccion
+    save(datJam,file = 'BasesR/011_datJam.RData')
+    #### GUARDO LA BASE CON LOS CODIGOS
+    save(datJamDir,file = 'Resultados/011_datJamDir.RData')
+    #### Actualizo las bases ingresadas
+    save(jamBaseNames,file = 'BasesActualiza/jamBaseNames.RData')
+    
+    print(paste0(Sys.time(),' :Final del proceso'))
+    
+  } else {
+    print(paste0('La base de nombre: ',nameBase,' ya fue ingresada'))
+  }
+  
+###################################################################
+###################################################################
+###################################################################
+###### Geenra los datos para el shiny
+  
+  #######################################
+  ###### PARCHE DIRECCION
+  if(!exists('datJamDir')) load('Resultados/011_datJamDir.RData')
+  if(!exists('datJam')) load('BasesR/011_datJam.RData')
+  
+  #############################################
+  ##### data frame de la base datJamDir
+  ########################################
+  datJam_df = datJam %>% st_set_geometry(NULL)
+  rm(datJam)
+  
+  datJam_new = datJamDir
+  
+  ######################################
+  ##### Registra las bases que se van poniendo
+  ##### e indica si hay que calcular o no
+  nameBaseIN = unique(datJam_new$nomBase)
+  
+  IndAgg = FALSE
+  IndIni = FALSE
+  ID_BaseSegRef = 0
+  ID_segUnicRef = 0
+  if(file.exists('BasesActualiza/jamDatosShiny.RData')) {
+    load('BasesActualiza/jamDatosShiny.RData')
+    IndAgg = sum(!nameBaseIN %in% jamDatosShiny) > 0 
+    nomBaseAgg = nameBaseIN[!nameBaseIN %in% jamDatosShiny]
+    jamDatosShiny = unique(c(jamDatosShiny,nomBaseAgg))
+    
+    ###### Cargo las bases previas
+    if(IndAgg) {
+      load('Shiny/Insumos/XXX_DatosShiny.RData')
+      datJamSegm_dfPrev = datJamSegm_df
+      segmentUnicPrev = segmentUnic
+      datJamDir = datJamDir[datJamDir$nomBase %in% nomBaseAgg,]
+      ID_BaseSegRef = nrow(datJamSegm_dfPrev)
+      ID_segUnicRef = nrow(segmentUnicPrev)
+    }
+  } else {
+    IndIni = TRUE
+    jamDatosShiny = nameBaseIN
+  }
+  
+  
+  
+  if((IndAgg | IndIni)) {
     ###### Genera los segmentos
     print(paste0(Sys.time(),' :Segmentiza las geometrias'))
     
-    datJamSegm = st_segments(datJam,progress = FALSE) %>% #mutate(ID_fila = row_number() + ID_BaseSegRef) %>%
+    datJamSegm = st_segments(datJamDir,progress = FALSE) %>% mutate(ID_fila = row_number() + ID_BaseSegRef) %>%
       rename('geometry' = 'result') %>% filter(!st_is_empty(.))  %>% 
       mutate(ID_coord = as.character(geometry)) %>% 
       suppressWarnings()
@@ -414,160 +471,152 @@ for(bb in allBases) {
     ##### Segmentos unicos
     print(paste0(Sys.time(),' :Encuentra segmentos unicos y los anexa a los ya existentes'))
     
-    segmentUnicList[[length(segmentUnicList) + 1]] = unique(datJamSegm[,c('geometry','ID_coord')]) 
+    segmentUnic = unique(datJamSegm[,c('geometry','ID_coord')]) 
     
-     #### PASO LA BASE DE SEGMENTOS A DATA FRAME
+    #### Pregunta si es el inicio o si ya hay segemntos existentes
     
-    print(paste0(Sys.time(),' :Saco variables y guardo en la listas'))
+    if(IndIni) {
+      segmentUnic = segmentUnic %>% mutate(ID_segmento = row_number())
+    } else {
+      segmentUnic = subset(segmentUnic,!ID_coord %in% segmentUnicPrev$ID_coord)
+      if(nrow(segmentUnic) > 0) {
+        segmentUnic = segmentUnic %>% mutate(ID_segmento = row_number() + ID_segUnicRef) 
+        segmentUnic = rbind(segmentUnicPrev,segmentUnic)
+      } else {
+        segmentUnic = segmentUnicPrev  
+      }
+    }
     
-    varsSacar = c('NOM_CALLE','ID_CODCALLE','NOM_CALLE_END',
-                  'NOM_CALLE_ESQ_f',
-                  'ID_CODCALLE','NOM_CALLE_END','ID_calle_Ini',
-                  'NOM_CALLE_ESQ','ID_calle_Fin','endnode','jamtype') 
     
-    datJamSegm_dfList[[length(datJamSegm_dfList) + 1]] = datJamSegm %>% 
-      st_set_geometry(NULL) %>% 
-      dplyr::select(-any_of(varsSacar)) %>%
-      mutate(street = arreglaCaracteres(street,tolower = F,sacPunto = F))
+    datJamSegm = datJamSegm %>% left_join(segmentUnic %>% 
+                                            st_set_geometry(NULL) %>%
+                                            dplyr::select(ID_coord,ID_segmento),
+                                          by = 'ID_coord')
     
-    datJam_dfList[[length(datJam_dfList) + 1]] = datJam %>% 
-      st_set_geometry(NULL) %>% 
-      dplyr::select(-any_of(varsSacar)) %>%
-      mutate(street = arreglaCaracteres(street,tolower = F,sacPunto = F))
+    
+    #### PASO LA BASE DE SEGMENTOS A DATA FRAME
+    datJamSegm_df = datJamSegm %>% st_set_geometry(NULL)
+    
+    
     
     print(paste0(Sys.time(),' :Final del proceso'))
-    
-    ### Borro las bases cargadas
-    rm(list = c('datJam','datJamSegm'))
     #######################################
+    ####### Veo si agrego datos o no
+    print(paste0(Sys.time(),' :Adjunta nueva base de datos segmentizados datJamSegm_df a los anteriores'))
+    
+    ##### BORRO BASES
+    rm(datJamSegm)
+    rm(datJamDir)
+    
+    if(IndAgg) {
+      datJamSegm_dfPrev$diaStr = as.character(datJamSegm_dfPrev$diaStr)
+      datJamSegm_df = datJamSegm_df %>% dplyr::select(-ID_coord)
+      
+      nomDatJamSeg = intersect(colnames(datJamSegm_df),colnames(datJamSegm_dfPrev))
+      
+      datJamSegm_df = rbind(datJamSegm_dfPrev[,nomDatJamSeg],datJamSegm_df[,nomDatJamSeg])
+    }
+    
+    print(paste0(Sys.time(),' :Final del proceso'))
+    #################################
+    ##### GUARDO LOS SEGMENTOS
+    # save(datJamSegm,file = 'Resultados/XXX_datJamSegm.RData')
+    ###############################################################
+    ########### ARREGLO LOS DIAS 
+    
+    print(paste0(Sys.time(),' :Crea base dsma'))
+    
+    disOrd = names(table(datJamSegm_df$diaStr))
+    datJamSegm_df = datJamSegm_df %>% mutate(diaStr = factor(diaStr,levels = disOrd))
 
+    
+    
+    ##### Tabla con dias y meses y semana
+    dsma = datJam_df %>% dplyr::select(diaStr,finDeSem,diaSem) %>% 
+      group_by(diaStr) %>% 
+      slice_head() %>%
+      ungroup() %>%
+      mutate(diaNum = as.numeric(substr(diaStr,9,10)),
+             mes = substr(diaStr,6,7),
+             anio = substr(diaStr,1,4),
+             levelDia = as.numeric(diaSem),
+             diaSem = as.character(diaSem)) %>%
+      arrange(anio,mes,diaNum) %>% data.frame()
+    
+    rownames(dsma) = dsma$diaStr
+    
+    print(paste0(Sys.time(),' :Final del proceso'))
+    ##############################################
+    ##### Tabla para resumen de la base
+    print(paste0(Sys.time(),' :Crea base resumen'))
+    
+    datJam_resum = datJam_df %>% 
+      mutate(
+        tiempoMP = as.numeric(difftime(datemodified,datepublished,units = 'mins')),
+        diaMes = substr(diaStr,1,7)) %>% 
+      group_by(entity_id,street) %>%
+      summarise(count = n(),
+                diaMes = last(diaMes),
+                tiempoMP = max(tiempoMP),
+                delay = mean(delay,na.rm = T),
+                speedkmh = mean(speedkmh,na.rm = T),
+                level = max(level,na.rm = T)) %>%
+      ungroup() %>%
+      mutate(duracionEv = ifelse(abs(tiempoMP - 2*count) > 2,2*count,tiempoMP)) %>%
+      suppressMessages()
+    
     print(paste0(Sys.time(),' :Final del proceso'))
     #########################################################
+    ####### ARREGLA CARACTERES
+    print(paste0(Sys.time(),' :Elimina algunas variables que por ahora no se necesitan'))
     
-    ########### GUardo el vector de bases ingresadas
-    print(paste0(Sys.time(),' :Guarda vector de bases cargadas'))
-    save(jamBaseNames,file = 'BasesActualiza/jamBaseNames.RData')
-    print(paste0(Sys.time(),' :Final del proceso'))
+    varsSacar = c('NOM_CALLE','COD_NOMBRE','ID_CODCALLE','NOM_CALLE_END',
+                  'COD_NOMBRE_END','NOM_CALLE_ESQ_f','COD_NOMBRE_ESQ_f',
+                  'ID_CODCALLE','NOM_CALLE_END','COD_NOMBRE_END','ID_calle_Ini',
+                  'NOM_CALLE_ESQ','COD_NOMBRE_ESQ','ID_calle_Fin','endnode','jamtype') 
+    
+    # datJam_df$street = arreglaCaracteres(datJam_df$street,F,F)
+    datJam_df = datJam_df %>% dplyr::select(-any_of(varsSacar))
 
+    # datJamSegm_df$street = arreglaCaracteres(datJamSegm_df$street,F,F)
+    datJamSegm_df = datJamSegm_df %>% dplyr::select(-any_of(varsSacar))
+    
+    # datJam_resum$street = arreglaCaracteres(datJam_resum$street,F,F)
+    
+    print(paste0(Sys.time(),' :Final del proceso'))
+    #########################################################
+    ########### GUardo insumos shiny
+    print(paste0(Sys.time(),' :Guarda bases que son insumo para shiny'))
+    
+    save(datJam_df,datJamSegm_df,segmentUnic, file = 'Shiny/Insumos/XXX_DatosShiny.RData')
+    
+    #### GUARDO COMO RDS
+    # saveRDS(datJam_df,'Shiny/Insumos/datJam_df.RDS')
+    # saveRDS(datJamSegm_df,'Shiny/Insumos/datJamSegm_df.RDS')
+    # saveRDS(segmentUnic,'Shiny/Insumos/segmentUnic.RDS')
+    ### Guardo la tabla de dias mes y anio
+    
+    save(dsma, file = 'Shiny/Insumos/XXX_dsma.RData')
+    
+    ### Guarda base para hacer el resumen de la base
+    
+    save(datJam_resum, file = 'Shiny/Insumos/XXX_datJam_resum.RData')
+    
+    #### Actualiaza datos cargados
+    save(jamDatosShiny,file = 'BasesActualiza/jamDatosShiny.RData')
+    
+    print(paste0(Sys.time(),' :Final del proceso'))
     
     finTime = Sys.time()
     totalTime = difftime(finTime,iniTime,units = 'mins')
     
     print(paste0(Sys.time(),' :FINAL DE TODO EL PROCESO PARA LA BASE: (',nameBase,') Y DURO ',round(as.numeric(totalTime),1),' MINUTOS'))
-
-    } else {
-      print(paste0('La base de nombre: ',nameBase,' ya fue ingresada'))
-  }
-  
-}  
-
-
-
-###################################################################
-###################################################################
-###################################################################
-
-############################################
-###### Si hay cambios se generan las bases nuebas agregando
-if(indCambios) {
-  print(paste0(Sys.time(),' :Actualizo cambios'))
-  ##### Genera los puntos unicos de conteo  
-  if(length(segmentUnicList) > 1) {
-    segmentUnic = do.call(rbind,segmentUnicList)
     
-    segmentUnic = segmentUnic %>% 
-      group_by(ID_coord) %>%
-      slice_head() %>%
-      ungroup()
+    
   } else {
-    segmentUnic = segmentUnicList[[1]]
+    print(paste0('La base de nombre: ',nameBase,' fue SEGMENTIZADA PREVIAMENTE'))
   }
-  
-  segmentUnic = segmentUnic %>% mutate(ID_segmento = row_number())
-####### Genero la base de Jams segmentizada
-  if(length(datJamSegm_dfList) > 1) {
-    datJamSegm_df = as_tibble(data.table::rbindlist(datJamSegm_dfList))
-  } else {
-    datJamSegm_df = as_tibble(datJamSegm_dfList[[1]])
-  }
-  
-  datJamSegm_df = datJamSegm_df %>% left_join(segmentUnic %>% 
-                                                st_set_geometry(NULL) %>% 
-                                        dplyr::select(ID_coord,ID_segmento),
-                                        by = 'ID_coord')
-  
-  disOrd = names(table(as.character(datJamSegm_df$diaStr)))
-  datJamSegm_df = datJamSegm_df %>% mutate(diaStr = factor(diaStr,levels = disOrd))
-  
-  
-####### Genero la base de Jams sin segmentizar
-  if(length(datJam_dfList) > 1) {
-    datJam_df = as_tibble(data.table::rbindlist(datJam_dfList))
-  } else {
-    datJam_df = as_tibble(datJam_dfList[[1]])
-  }
-  
-  ##### Tabla con dias y meses y semana
-  dsma = datJam_df %>% dplyr::select(diaStr,finDeSem,diaSem) %>% 
-    group_by(diaStr) %>% 
-    slice_head() %>%
-    ungroup() %>%
-    mutate(diaNum = as.numeric(substr(diaStr,9,10)),
-           mes = substr(diaStr,6,7),
-           anio = substr(diaStr,1,4),
-           levelDia = as.numeric(diaSem),
-           diaSem = as.character(diaSem)) %>%
-    arrange(anio,mes,diaNum) %>% data.frame()
-  
-  rownames(dsma) = dsma$diaStr
-  
-  print(paste0(Sys.time(),' :Final del proceso'))
-  ##############################################
-  ##### Tabla para resumen de la base
-  print(paste0(Sys.time(),' :Crea base resumen'))
-  
-  datJam_resum = datJam_df %>% 
-    mutate(
-      tiempoMP = as.numeric(difftime(datemodified,datepublished,units = 'mins')),
-      diaMes = substr(diaStr,1,7)) %>% 
-    group_by(entity_id,street) %>%
-    summarise(count = n(),
-              diaMes = last(diaMes),
-              tiempoMP = max(tiempoMP),
-              delay = mean(delay,na.rm = T),
-              speedkmh = mean(speedkmh,na.rm = T),
-              level = max(level,na.rm = T)) %>%
-    ungroup() %>%
-    mutate(duracionEv = ifelse(abs(tiempoMP - 2*count) > 2,2*count,tiempoMP)) %>%
-    suppressMessages()
-  
-  print(paste0(Sys.time(),' :Final del proceso'))
-  
-  ####################################################
-  ####################################################
-  ####################################################
-  
-  print(paste0(Sys.time(),' :Guarda bases que son insumo para shiny y resumen'))
-  
-  save(datJam_df,datJamSegm_df,segmentUnic, file = 'Shiny/Insumos/XXX_DatosShiny.RData')
-  save(dsma, file = 'Shiny/Insumos/XXX_dsma.RData')
-  save(datJam_resum, file = 'Shiny/Insumos/XXX_datJam_resum.RData')
-  
-  save(segmentUnic, file = 'Shiny/Insumos/XXX_segmentUnic.RData')
-  
-  print(paste0(Sys.time(),' :Final del proceso'))
-  ### GUarda en fst
-  
-  print(paste0(Sys.time(),' :Guarda bases que son insumo para shiny y resumen en formato fst'))
-  
-  write.fst(datJamSegm_df, "Shiny/Insumos/datJamSegm_df.fst")
-  write.fst(datJam_df, "Shiny/Insumos/datJam_df.fst")
-  write.fst(datJam_resum, "Shiny/Insumos/datJam_resum.fst")
-  
-  print(paste0(Sys.time(),' :Final del proceso'))
-  
-} else {
-  print('No hay cambios para adaptar')
+  print(paste0('La base de nombre: ',nameBase,' INGRESADA'))
 }
 
 

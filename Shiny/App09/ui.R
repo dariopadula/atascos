@@ -283,12 +283,9 @@ ui <-
           column(2,
                  # br(),
                  downloadButton("downloadData", HTML("<b>Descargar Tabla</b>"),
-                                style="color: #fff; background-color: #582C83; border-color: #2e6da4"))
+                                style="color: #fff; background-color: #582C83; border-color: #2e6da4; margin-top: 11px;"))
           )
       )
-          #  downloadButton("downloadData", "Descargar Tabla",class = 'butt'),
-          # tags$head(tags$style(".butt{background-color:#582C83;} .butt{color: #fff;} .butt{border-color: #2e6da4;}"))
-         # )
       ),
       tabPanel(div(img(src='matriz_icon.svg', style = styleIcon), strong('Matriz de calor')),
           box(title = "Configuración", width = 16, solidHeader = F, status = "danger",
