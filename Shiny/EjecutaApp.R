@@ -49,6 +49,10 @@ load('Shiny/Insumos/XXX_segmentUnic.RData')
 load('Shiny/Insumos/XXX_DatosShinyCortes.RData')
 # Base con los datos de AutoScop
 load('Shiny/Insumos/XXX_DatosAScopShiny.RData')
+
+# Datos del STM por paradas
+datSTM_df = read.fst("Shiny/Insumos/datSTM_df.fst")
+load('Shiny/Insumos/XXX_puntSTMUnic.RData')
 # Tabla de dias, anio, meses para filtrar los días
 load('Shiny/Insumos/XXX_dsma.RData')
 # Lista con shapes de servicios a incluir
@@ -87,7 +91,7 @@ rownames(nomVarsDF_s) = as.character(nomVarsDF$nomShow)
 
 ###########################################
 ###### EJECUTA APP
-runApp('Shiny/App09',launch.browser = TRUE)
+runApp('Shiny/App10',launch.browser = TRUE)
 
 
 # https://towardsdatascience.com/create-interactive-map-applications-in-r-and-r-shiny-for-exploring-geospatial-data-96b0f9692f0f
