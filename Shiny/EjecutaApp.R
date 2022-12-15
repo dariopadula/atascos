@@ -4,7 +4,7 @@
 libNecesarias = c('shiny','tidyverse','ggplot2','dplyr','ggrepel','shinydashboard','DT',
                   'formattable','gtools','MASS','sf','nngeo',
                   'mgcv','ggpubr','gridExtra','leaflet.extras','viridis','ggExtra','plotly',
-                  'fst')
+                  'fst','conflicted')
 
 
 
@@ -17,6 +17,15 @@ if(length(pkgAux) > 0) install.packages(pkgAux)
 ########################################################
 ##### LIBRERIAS
 for(ii in libNecesarias) eval(bquote(library(.(ii))))
+
+
+
+conflict_prefer("select","dplyr")
+conflict_prefer("filter","dplyr")
+conflict_prefer("summarise","dplyr")
+conflict_prefer("mutate","dplyr")
+conflict_prefer("arrange","dplyr")
+conflict_prefer("box","shinydashboard")
 
 ###################################################
 ### FUNCIONES
@@ -77,10 +86,10 @@ nomVarsDF = data.frame(nomBase = c('street','count','delayMean','level45',
                        nomShow = c('Calle','Nro eventos','Demora media (segundos)',
                                    'Total nivel 4 o +','Total nivel 3 o +','Nivel Medio',
                                    'Velocidad km/h Medio','Largo Medio (metros)','Hora Media',
-                                   'Año','Mes','Tipo de día','Día semana',
-                                   'Día calendario','Niveles','Hora Inicio','Hora Fin')
-                       )
-                    
+                                   'Anio','Mes','Tipo de dia','Dia semana',
+                                   'Dia calendario','Niveles','Hora Inicio','Hora Fin')
+)
+
 
 
 nomVarsDF_b = nomVarsDF
@@ -88,6 +97,29 @@ rownames(nomVarsDF_b) = as.character(nomVarsDF$nomBase)
 
 nomVarsDF_s = nomVarsDF
 rownames(nomVarsDF_s) = as.character(nomVarsDF$nomShow)
+
+
+################################
+##### Arregegla dias
+
+adaptaDias = function(xx) {
+  xx[grep('lunes|Monday',xx,ignore.case = T)] = 'Lunes'
+  xx[grep('Martes|Tuesday',xx,ignore.case = T)] = 'Martes'
+  xx[grep('rcoles|Wednesday',xx,ignore.case = T)] = 'Miercoles'
+  xx[grep('Jueves|Thursday',xx,ignore.case = T)] = 'Jueves'
+  xx[grep('Viernes|Friday',xx,ignore.case = T)] = 'Viernes'
+  xx[grep('bado|Saturday',xx,ignore.case = T)] = 'Sabado'
+  xx[grep('Domingo|Sunday',xx,ignore.case = T)] = 'Domingo'
+  
+  return(xx)          
+}
+
+dsma = dsma %>% mutate(diaSem = adaptaDias(weekdays(as.Date(diaStr))),
+                       finDeSem = ifelse(diaSem %in% c('Sabado','Domingo'),'Fin de semana','Lunes a viernes'),
+                       diaSem = factor(diaSem,levels = c('Lunes','Martes','Miercoles','Jueves','Viernes','Sabado','Domingo')),
+                       levelDia = as.numeric(diaSem))
+
+
 
 ###########################################
 ###### EJECUTA APP

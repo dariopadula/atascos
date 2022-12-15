@@ -54,7 +54,7 @@ arreglaDias = function(x) {
 ###### LEE base
 dir('Datos/STM/')
 
-basesAll = c("012022","022022","032022","042022","052022") #,
+basesAll = c("012022","022022","032022","042022","052022","062022","072022") #,
 
 basesUnir = list()  
 puntosUnir = list()

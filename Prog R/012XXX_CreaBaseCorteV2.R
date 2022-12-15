@@ -83,7 +83,7 @@ genLimFecha = function(xx) {
 ###### LEE base
 dir('Datos/Cortes/')
 
-basesAll = c("2021_12","2022_01","2022_02","2022_03","2022_04","2022_05") #,"202203"
+basesAll = c("2021_12","2022_01","2022_02","2022_03","2022_04","2022_05","2022_06","2022_07") #,"202203"
 
 datCor_dfList = list()
 datCorSegm_dfList = list()

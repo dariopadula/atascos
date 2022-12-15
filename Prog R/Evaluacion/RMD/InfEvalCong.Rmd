@@ -1,0 +1,462 @@
+---
+title: 'Indicadores para la evaluación de intervenciones'
+# author: "Darío Padula, Leticia Debera, Daniel Alessandrini"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  prettydoc::html_pretty:
+  theme: leonids
+highlight: github    
+vignette: |
+  %\VignetteIndexEntry{Vignette Title} %\VignetteEngine{knitr::rmarkdown} %\VignetteEncoding{UTF-8}
+---
+  
+  
+```{r setup, echo = F,include=T}
+knitr::opts_chunk$set(echo = F,message = F,warning = F,
+                      eval = T,fig.align="center",out.width = "100%")
+```
+
+
+
+```{r}
+libNecesarias = c('shiny','tidyverse','ggplot2','dplyr','ggrepel','shinydashboard','DT',
+                  'formattable','gtools','MASS','sf','nngeo','knitr','kableExtra',
+                  'mgcv','ggpubr','gridExtra','leaflet.extras','viridis','ggExtra','plotly',
+                  'fst','plyr','conflicted')
+
+
+
+pkgInstall = installed.packages()[,'Package']
+
+pkgAux = libNecesarias[!libNecesarias %in% pkgInstall]
+
+if(length(pkgAux) > 0) install.packages(pkgAux)
+
+########################################################
+##### LIBRERIAS
+for(ii in libNecesarias) eval(bquote(library(.(ii))))
+
+###############################################
+
+```
+
+
+```{r}
+
+conflict_prefer("select","dplyr")
+conflict_prefer("filter","dplyr")
+conflict_prefer("summarise","dplyr")
+conflict_prefer("mutate","dplyr")
+```
+
+```{r}
+diaIni = "2021-12-01"
+diaFin = "2021-12-21"
+diaIni_T = "2021-12-23"
+diaFin_T = "2021-12-23"
+```
+
+
+
+
+```{r cargDatos}
+###############################################
+###############################################
+load('../../../Shiny/Insumos/XXX_dsma.RData')
+#### Cargo la zona de interes
+load('../../../Prog R/Evaluacion/SHP/polZONA_sf.RData')
+#### Cargo los segmentos unicos
+load('../../../Shiny/Insumos/XXX_segmentUnic.RData')
+
+load('../../../Datos/SegmentosInter.RData')
+
+### Datos de la intercepcion
+load('../../../Datos/datJamInt.RData')
+
+
+sumSegm = sum(segmInt$largo)
+```
+
+
+```{r}
+
+
+
+dsma_aux = dsma %>% mutate(diaFecha = as.Date(diaStr),
+                           tratamiento = ifelse(diaFecha >= as.Date(diaIni) & 
+                                                  diaFecha <= as.Date(diaFin),'Control',
+                                                ifelse(diaFecha >= as.Date(diaIni_T) & 
+                                                         diaFecha <= as.Date(diaFin_T),'Tratamiento',NA))) %>%
+  filter(!is.na(tratamiento))
+
+totDias = dsma_aux %>% group_by(finDeSem,tratamiento) %>% 
+  summarise(totDias = n()) %>% ungroup()
+```
+
+
+# Introducción
+
+En este documento se presentan la creación de algunos indicadores para evaluar la congestión en una zona de la terminal de Tres Cruces de la cuidad de Montevideo. Con estos indicadores de construirá una línea de base para explorar si existen mejoras luego de implementados ciertos cambios en la zona, los cuales, se espera impacten en el flujo vehicular y en la congestión en la zona. 
+
+Los resultados se muestran considerando dos períodos de tiempo distintos, uno que denominaremos **Control** que emula ser un período anterior a una determinada intervención en la zona de estudio, luego, otro período que denominamos **Tratamiento** que es posterior a la intervención. De esta forma, podremos comparar períodos que sean "comparables" y evaluar impactos debido a la intervención. 
+
+En particular para el **Control** se considera el período  ``r paste(diaIni,diaFin,sep = ' al ')`` y para los de **Tratamiento** el período  ``r paste(diaIni_T,diaFin_T,sep = ' al ')``. El total de días para cada grupo según tipo de día se ve en la siguiente tabla.
+
+
+```{r}
+totDias %>% dplyr::rename(c('Tipo de Dia' = 'finDeSem',
+                            'Tratamiento' = 'tratamiento',
+                            'Total dias' = 'totDias')) %>%
+  knitr::kable(caption = 'Total de días según tipo de día y si es tratamiento o control')
+```
+
+***En este reporte vamos a mostrar los resultados de días entre semana.***
+
+# Datos
+
+La IM cuenta con datos de los eventos de congestión generados por la aplicación *Waze*. La aplicación genera un evento de congestión cuando la velocidad calculada vs la velocidad promedio y la velocidad de flujo libre para ese momento de tiempo se ve disminuida para un segmento en particular. Cada evento de congestión genera un identificador único que se mantiene mientras el evento persista. 
+
+La IM captura la información de estos eventos con una periodicidad de dos minutos, esto significa que si un evento con un determinado identificador *XX* está ocurriendo en el momento que la IM descarga los datos, el evento lo tendremos en nuestro set de datos, si el evento se mantiene durante varios minutos, tendremos ese evento con el identificador *XX* varias veces en los datos (ejemplo, si el evento dura 10 minutos, se espera que aparezca 5 veces en nuestros datos).
+
+Si bien un evento puede aparecer varias veces en nuestros datos con el mismo identificador, esto no significa que la información asociada al evento se mantenga igual. 
+A continuación vamos a describir brevemente la información que se descarga para cada evento en cada momento que se descargan los datos.
+
+Datos constantes para cada evento con un mismo identificador:
+  
+* **entity_id**: Identificador del evento de congestión.
+* **datecreated**: Fecha en la que comenzó el evento.
+* **street**: Nombre de la calle donde se produce el evento de congestión.
+* **city**: Ciudad
+* **country**: País 
+* **roadType**: Tipo de calle, hay varios códigos, pero en esta zona solo hay: calles = 1 y calles principales = 2.
+
+Datos que pueden variar para un mismo evento:
+  
+  * **line**: Geometría del tipo **linestring** con la secuencia de segmentos donde se produce la congestión.
+* **speedkmh**: velocidad en kilómetros por hora en la geometría del evento.
+* **length**: Largo de la congestión (largo de la linestring).
+* **delay**: Demora estimada en segundos.
+* **level**: Severidad de la congestión, donde 0 es flujo libre y 5 es flujo cortado.
+
+
+
+# Metodología
+
+Se proponen tres indicadores que hacen referencia a distintas medidas que se obtienen de cada uno de los eventos dentro de cada tiempo. Estos indicadores se construyen para capturar información sobre la cantidad de eventos de congestión, los largos de los tramos congestionados y las demoras asociadas.
+
+Los datos que tenemos solo están cuando existe un evento de congestión, por lo tanto, los indicadores no podrían ser simples promedios ya que va a depender directamente de la cantidad de eventos que existan en los datos, la idea aquí es relativizar con respecto a algo que sea comparable independientemente de la cantidad de eventos que tengamos y capturen impactos de intervenciones.
+
+
+## Segmentos a considerar
+
+A medida que se van descargando datos de la aplicación *Waze*, los vamos procesando y le realizamos algunas transformaciones (por ejemplo para construir la app de visualización de congestión). Una de esas transformaciones es tomar la geometría (la línea) que indica la zona congestionada para un evento en un determinado tiempo y la partimos en los segmentos que componen esa línea, a medida que descomponemos esas líneas vamos capturando segmento únicos y los guardamos en una tabla (por ahora hemos capturado ``r nrow(segmentUnic)`` únicos).
+
+Para este reporte contamos con un polígono de la zona a estudiar, a ese polígono lo usamos para detectar  cuáles de los segmentos que están contenidos dentro del polígono. Luego, con esos segmentos capturamos los eventos de congestión donde al menos un segmento está contenido dentro del polígono. La detección de los segmentos y los eventos de congestión a considerar se hace en los siguientes pasos:
+  
+  1) Se intersepta el polígono de la zona de interés con el conjunto de segmentos únicos de Waze y capturamos el ID de los segmentos.
+2) Luego, en la tabla de eventos de congestión segmentizados (es una tabla que repite la información del evento, tantas veces como segmentos haya) se encuentran los ID de segmentos del punto (1) y capturamos los identificadores de los eventos (estos son unicos para cada evento y tiempo).
+3) Por últimos, capturamos de los datos sin segmentizar las filas con los identificadores obtenidos en el punto (2). 
+
+Con los datos obtenidos en el punto (3) son con los que vamos a trabajar, la información que tiene esta tabla es la que se describe en Sección **Datos**.
+
+
+## Indicadores
+
+Los indicadores propuestos son:
+  
+  * **Total de eventos diarios promedio (TEDP)**: Este indicador es el más directo calcula el promedio diario de los eventos, aquí sí es un promedio simple ya que la cantidad de días no varía luego de definir el rango de tiempo que se quiere estudiar.
+
+$$TEDP = \frac{1}{D}\sum_{d = 1}^{d = D} n_d$$
+  donde, $D$ es el total de días en el período de estudio y $n_d$ es el número de eventos para el día $d$.
+
+* **Largo normalizado (LN)**: Este indicador está basado en los largos de los congestionamientos. Básicamente suma todos los largos de los eventos de congestión, en todos los momentos $t$ que se extraen los datos (cada dos minutos) y para todos los días dentro del período $D$, luego a ese total de largos lo dividimos por el total de momentos que los datos fueron generados, por ejemplo, un día tiene 1440 minutos, por lo tanto en un día se descargan datos $\frac{1440}{2} = 720$ veces. 
+
+
+$$LN = \frac{1}{D\times ut}\sum_{d = 1}^{d = D}\sum_{t = 1}^{t = UT}\sum_{e = 1}^{e = N_{dt}} l_{dte}$$
+  donde, $ut$, es la cantidad de veces que se extraen los datos (ej, 720 si se calcula el indicador por día y 30 si se calcula por hora), $D$, es el total de días dentro del período de estudio y $l_{dte}$ es el largo del evento de congestión $e$ en el momento de extracción de información $t$ y el día $d$.
+
+
+* **Retraso normalizado (RN)**: Este indicador se calcula de forma análoga al **LN**, la única diferencia es que lo que se suman son retrasos (delay), una interpretación de este indicador sería que si tenemos mucha gente que recorre toda la zona de estudio en muchos momentos distintos y días distintos y calcula la demora, el valor del indicador sería parecida al promedio de los retrasos obtenidos. De forma similar al **LN**, el indicador se expresa como,
+
+$$RN = \frac{1}{D\times ut}\sum_{d = 1}^{d = D}\sum_{t = 1}^{t = UT}\sum_{e = 1}^{e = N_{dt}} r_{dte}$$
+  
+  donde, $r_{dte}$ es el retraso del evento de congestión $e$ en el momento de extracción de información $t$ y el día $d$.
+
+* **Proporción del largo normalizado (PLN)**: Este indicador toma como insumo el indicador **LP** pero lo divide entre el largo de todos los segmmentos considerados en la zona.
+
+$$PLN = \frac{LN}{\sum_{s = 1}^{s = S} l_s}$$
+  donde, $S$, es el número de segmentos incluidos dentro de la zona de estudio y $l_s$ es el largo del segmento $s$.
+
+## Variables de corte
+
+En el documento mostraremos los indicadores calculados por hora y por tipo de calle *(calles común* o *calle principal*).
+
+```{r}
+#### Arreglo el road type
+
+roadT = datJamInt %>% group_by(street,roadtype) %>% 
+  summarise(n = n()) %>%
+  slice_max(n) %>%
+  ungroup()
+
+```
+
+
+```{r}
+
+
+datos = datJamInt %>% select(-roadtype) %>%
+  left_join(roadT %>% select(-n)) %>%
+  inner_join(dsma_aux %>% select(diaStr,tratamiento)) %>%
+  left_join(totDias, by = c('finDeSem','tratamiento')) %>%
+  suppressMessages()
+
+
+datosAgg = datos %>%
+  group_by(finDeSem,street,roadtype,hora,level,tratamiento) %>%
+  summarise(n = n(),
+            totDias = first(totDias),
+            congPorDia = round(n/totDias),
+            sum_largo = sum(length),
+            sum_delay = sum(delay),
+            largo_Norm = sum_largo/(totDias*30),
+            delay_Norm = sum_delay/(totDias*30),
+            largo_NormTerr = round(100*largo_Norm/sumSegm,2)) %>%
+  ungroup()
+
+
+resLevlT = datosAgg %>% 
+  group_by(finDeSem,street,roadtype,hora,tratamiento) %>%
+  summarise(n = sum(n),
+            totDias = first(totDias),
+            congPorDia = round(n/totDias),
+            sum_largo = sum(sum_largo),
+            sum_delay = sum(sum_delay),
+            largo_Norm = sum_largo/(totDias*30),
+            delay_Norm = sum_delay/(totDias*30),
+            largo_NormTerr = round(100*largo_Norm/sumSegm,2)) %>%
+  ungroup()  %>% mutate(level = 'Total')  %>% suppressMessages()
+
+resRoadTypeT = datosAgg %>% 
+  group_by(finDeSem,street,level,hora,tratamiento) %>%
+  summarise(n = sum(n),
+            totDias = first(totDias),
+            congPorDia = round(n/totDias),
+            sum_largo = sum(sum_largo),
+            sum_delay = sum(sum_delay),
+            largo_Norm = sum_largo/(totDias*30),
+            delay_Norm = sum_delay/(totDias*30),
+            largo_NormTerr = round(100*largo_Norm/sumSegm,2)) %>%
+  ungroup() %>% mutate(roadtype = 'Total')  %>% suppressMessages()  
+
+
+resTT = datosAgg %>% 
+  group_by(finDeSem,street,hora,tratamiento) %>%
+  summarise(n = sum(n),
+            totDias = first(totDias),
+            congPorDia = round(n/totDias),
+            sum_largo = sum(sum_largo),
+            sum_delay = sum(sum_delay),
+            largo_Norm = sum_largo/(totDias*30),
+            delay_Norm = sum_delay/(totDias*30),
+            largo_NormTerr = round(100*largo_Norm/sumSegm,2)) %>%
+  ungroup() %>% mutate(level = 'Total',
+                       roadtype = 'Total') %>% suppressMessages()   
+
+
+
+resAll = rbind.fill(datosAgg,resLevlT,resRoadTypeT,resTT)
+
+resAllaggCalle = resAll %>% 
+  group_by(finDeSem,roadtype,hora,level,tratamiento) %>%
+  summarise(n = sum(n),
+            totDias = first(totDias),
+            congPorDia = round(n/totDias),
+            sum_largo = sum(sum_largo),
+            sum_delay = sum(sum_delay),
+            largo_Norm = sum_largo/(totDias*30),
+            delay_Norm = sum_delay/(totDias*30),
+            largo_NormTerr = round(100*largo_Norm/sumSegm,2)) %>%
+  ungroup() %>% suppressMessages()
+
+resAllaggCalleRec = resAllaggCalle %>% 
+  mutate(level_rec = ifelse(level %in% c('1','2'),'Nivel 1 y 2',
+                            ifelse(level %in% c('3','4'),'Nivel 3 y 4','Total')),
+         roadtype_rec = ifelse(roadtype == '1','Calle',
+                               ifelse(roadtype == '2','Calle Principal',
+                                      ifelse(roadtype == 'Total','Total','Otras')))) %>% 
+  group_by(finDeSem,roadtype_rec,hora,level_rec,tratamiento) %>%
+  summarise(n = sum(n),
+            totDias = first(totDias),
+            congPorDia = round(n/totDias),
+            sum_largo = sum(sum_largo),
+            sum_delay = sum(sum_delay),
+            largo_Norm = sum_largo/(totDias*30),
+            delay_Norm = sum_delay/(totDias*30),
+            largo_NormTerr = round(100*largo_Norm/sumSegm,2)) %>%
+  ungroup() %>% suppressMessages()
+
+
+```
+
+
+# Resultados para los indicadores propuestos
+
+```{r}
+### Datos para los gráficos
+datPlot = resAllaggCalleRec %>% filter(level_rec != 'Nivel 1 y 2' & finDeSem != "Fin de semana") %>% 
+  mutate(tratamiento = factor(tratamiento))
+```
+
+
+```{r,fig.cap= 'Figura: Total de eventos diarios promedio (TEDP) calculado para cada hora del día, por tipo de calle diferenciando entre tratados y no tratados.'}
+pp = ggplot(datPlot) + 
+  geom_line(aes(x = hora,y = congPorDia,colour = tratamiento,
+                linetype = tratamiento),size = 0.9,alpha = 0.8) + 
+  facet_grid(roadtype_rec~level_rec,scales = 'free_y') + 
+  theme_bw() + ylab('Total de eventos diarios promedio (TEDP)') + 
+  theme(legend.title = element_blank(),legend.position = 'top')
+
+
+ggplotly(pp) %>% plotly::layout(legend = list(orientation = "h", x = 0.3, y = 1.2))
+
+```
+
+```{r,fig.cap='Figura: Largo normalizado (LN) calculado para cada hora del día, por tipo de calle diferenciando entre tratados y no tratados.'}
+pp = ggplot(datPlot) + 
+  geom_line(aes(x = hora,y = largo_Norm,colour = tratamiento,
+                linetype = tratamiento),size = 0.9,alpha = 0.8) + 
+  facet_grid(roadtype_rec~level_rec,scales = 'free_y') + 
+  theme_bw() +  ylab('Largo Normalizado (LN)') + 
+  theme(legend.title = element_blank(),legend.position = 'top')
+
+ggplotly(pp) %>% plotly::layout(legend = list(orientation = "h", x = 0.3, y = 1.2))
+
+```
+
+
+```{r,fig.cap='Figura: Proporción del Largo normalizado (PLN) calculado para cada hora del día, por tipo de calle diferenciando entre tratados y no tratados.'}
+
+pp = ggplot(datPlot) + 
+  geom_line(aes(x = hora,y = largo_NormTerr,colour = tratamiento,
+                linetype = tratamiento),size = 0.9,alpha = 0.8) + 
+  facet_grid(roadtype_rec~level_rec,scales = 'free_y') + 
+  theme_bw() + ylab('Proporcion del Largo Normalizado (PLN)') + 
+  theme(legend.title = element_blank(),legend.position = 'top')
+
+ggplotly(pp) %>% plotly::layout(legend = list(orientation = "h", x = 0.3, y = 1.2))
+
+```
+
+
+```{r,fig.cap='Figura: Retraso normalizado (RN) calculado para cada hora del día, por tipo de calle diferenciando entre tratados y no tratados.'}
+
+pp = ggplot(datPlot) + 
+  geom_line(aes(x = hora,y = delay_Norm,colour = tratamiento,
+                linetype = tratamiento),size = 0.9,alpha = 0.8) + 
+  facet_grid(roadtype_rec~level_rec,scales = 'free_y') + 
+  theme_bw() +  ylab('Retraso normalizado (RN)') + 
+  theme(legend.title = element_blank(),legend.position = 'top')
+
+ggplotly(pp) %>% plotly::layout(legend = list(orientation = "h", x = 0.3, y = 1.2))
+
+
+```
+
+
+
+
+```{r}
+datRep = datosAgg %>% filter(finDeSem != 'Fin de semana' & hora %in% c(16:19) & level %in% c(3:4)) %>%
+  group_by(street,tratamiento,roadtype) %>%
+  summarise(n = sum(n),
+            totDias = first(totDias),
+            congPorDia = round(n/totDias),
+            sum_largo = sum(sum_largo),
+            sum_delay = sum(sum_delay),
+            largo_Norm = sum_largo/(totDias*30),
+            delay_Norm = sum_delay/(totDias*30),
+            largo_NormTerr = round(100*largo_Norm/sumSegm,2)) %>%
+  ungroup() %>%
+  select(street,roadtype,tratamiento,congPorDia,largo_Norm,delay_Norm) %>%
+  tidyr::gather('congPorDia','largo_Norm','delay_Norm', key = Ind, value = Valores) %>%
+  unite(combi, Ind, tratamiento) %>%
+  spread(combi, Valores) %>%
+  mutate(across(congPorDia_Control:largo_Norm_Tratamiento,.fns = ~replace_na(.x,0))) %>%
+  mutate(across(congPorDia_Control:largo_Norm_Tratamiento,.fns = ~round(.x))) %>%
+  mutate(congPorDia_dif = congPorDia_Tratamiento - congPorDia_Control,
+         delay_Norm_dif = delay_Norm_Tratamiento - delay_Norm_Control,
+         largo_Norm_dif = largo_Norm_Tratamiento - largo_Norm_Control) %>%
+  dplyr::arrange(desc(congPorDia_Control))
+
+
+```
+
+## Reusltados por calle
+
+### Calles principales
+
+```{r}
+Stripe_Color = "#FAFAFA"
+
+
+dat01 = datRep %>% filter(roadtype == 2)
+dat01 = dat01[,c("street",
+                   "congPorDia_Control","congPorDia_Tratamiento","congPorDia_dif",
+                   "largo_Norm_Control","largo_Norm_Tratamiento","largo_Norm_dif",
+                   "delay_Norm_Control","delay_Norm_Tratamiento","delay_Norm_dif")]
+
+colnames(dat01) = c('Calle','Control','Tratamiento','C - T',
+                     'Control','Tratamiento','C - T',
+                     'Control','Tratamiento','C - T')
+# colnames(Ind_01) = gsub('% ','',colnames(Ind_01))
+
+
+
+
+Cap_01 = paste0('Resultado de indicadores: Total de eventos diarios promedio (TEDP), Largo Normalizado (LN) y Retraso Normalizado (RN) calculados para las calles comunes de la zona discriminando entre período de control y tratamiento.')
+
+kbl(dat01,caption = Cap_01, format.args = list(decimal.mark = ","),
+    booktabs = T, align = "lrrrrrrrrr", linesep = '') %>% 
+  row_spec(nrow(dat01), bold = T, color = "black") %>%
+  column_spec(1, bold = T, color = "black") %>%
+  row_spec(0, bold = T, color = "black") %>%
+  add_header_above(c(" " = 1, "TEDP" = 3, "LN" = 3, "RN" = 3), bold = T) %>%
+  kable_paper("striped", full_width = T, stripe_color = Stripe_Color)
+
+
+
+
+
+```
+
+
+### Calles comunes
+
+```{r}
+dat01 = datRep %>% filter(roadtype == 1)
+dat01 = dat01[,c("street",
+                   "congPorDia_Control","congPorDia_Tratamiento","congPorDia_dif",
+                   "largo_Norm_Control","largo_Norm_Tratamiento","largo_Norm_dif",
+                   "delay_Norm_Control","delay_Norm_Tratamiento","delay_Norm_dif")]
+
+colnames(dat01) = c('Calle','Control','Tratamiento','C - T',
+                     'Control','Tratamiento','C - T',
+                     'Control','Tratamiento','C - T')
+# colnames(Ind_01) = gsub('% ','',colnames(Ind_01))
+
+
+
+
+Cap_01 = paste0('Resultado de indicadores: Total de eventos diarios promedio (TEDP), Largo Normalizado (LN) y Retraso Normalizado (RN) calculados para las calles principales de la zona discriminando entre período de control y tratamiento.')
+
+kbl(dat01,caption = Cap_01, format.args = list(decimal.mark = ","),
+    booktabs = T, align = "lrrrrrrrrr", linesep = '') %>% 
+  row_spec(nrow(dat01), bold = T, color = "black") %>%
+  column_spec(1, bold = T, color = "black") %>%
+  row_spec(0, bold = T, color = "black") %>%
+  add_header_above(c(" " = 1, "TEDP" = 3, "LN" = 3, "RN" = 3), bold = T) %>%
+  kable_paper("striped", full_width = T, stripe_color = Stripe_Color)
+
+
+```

@@ -41,7 +41,7 @@ arreglaCaracteres = function(x) {
 ###### LEE base
 dir('Datos/Conteo/')
 
-basesAll = c("202112","202201","202202","202203","202204","202205") #,"202203"
+basesAll = c("202112","202201","202202","202203","202204","202205","062022","072022") #,"202203"
 
 basesUnir = list()  
 puntosUnir = list()
@@ -172,7 +172,7 @@ for(bb in basesAll) {
 
 
 ############################################
-###### Si hay cambios se generan las bases nuebas agregando
+###### Si hay cambios se generan las bases nuevas agregando
 
 if(indCambios) {
   
