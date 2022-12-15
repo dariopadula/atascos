@@ -121,6 +121,8 @@ simplificaCalleV2 = function(auxCalle,cellsizeMax = 500,npart = 10,distSegm = 15
   
   if(nrow(df) <= 1) {
     df = res_ord
+  } else {
+  df = rbind(res_ord[1,],df,res_ord[nrow(res_ord),])
   }
   
 
@@ -157,4 +159,6 @@ simplificaCalleV2 = function(auxCalle,cellsizeMax = 500,npart = 10,distSegm = 15
 }
 
 
-
+# plot(st_geometry(df))
+# plot(st_geometry(pinicio),add = T,col = 'red')
+# plot(st_geometry(pfin),add = T,col = 'green')

@@ -81,9 +81,12 @@ diasIntercept <- reactive({
 
     diasIntercept = diasIntercept()
     
-    diaSemana = dsma[diasIntercept,] %>% arrange(levelDia) %>% 
+    diaSemana = dsma[diasIntercept,] %>% 
+      mutate(diaSem = as.character(diaSem)) %>% 
+      arrange(levelDia) %>% 
       select(diaSem) %>% data.frame()
     
+
     choAnio<-c('Todo',unique(dsma[diasIntercept,'anio']))
     choMes<-c('Todo',unique(dsma[diasIntercept,'mes']))
     choFinde<-c('Todo',unique(dsma[diasIntercept,'finDeSem']))
@@ -549,6 +552,11 @@ pp <- eventReactive(input$run, {
     palette = 'Greens',
     domain = datSTM_Agg$avg_pasadas_intTime)
   
+  palAScop <- colorBin(
+    bins = 8,
+    palette = 'YlOrRd',
+    domain = datAScopAgg$valume_intTime)
+  
   
   pp = leaflet() %>% # ABRE LA VENTANA PARA HACER EL MAPA
     addTiles(group = "OSM") %>% # DEFINE UN FONDO (POR DEFECTO OSM)
@@ -581,17 +589,28 @@ pp <- eventReactive(input$run, {
       addCircleMarkers(data = datAScopAgg,
                        lng = ~longitud,lat = ~latitud,
                        radius = 3, 
-                       opacity = 0.5, 
-                       fillOpacity = 0.5, 
-                       color = 'orange', 
-                       fillColor = 1,
+                       #weight = ~weight,
+                       color = ~palAScop(valume_intTime),
+                       fillColor = ~palAScop(valume_intTime),
+                       fillOpacity = 0.7,
                        popup = ~content,
                        group = 'AutoScope') %>%
-      addLegend(position = "topleft",labels = 'AutoScope', 
-                colors = 'orange',
-                title = NULL,
-                opacity = 0.5,
-                group = 'AutoScope') %>%
+      addLegend(position = 'topleft',pal = palAScop,values = datAScopAgg$valume_intTime,
+                title = 'Conteo Promedio',group = 'AutoScope') %>%
+      # addCircleMarkers(data = datAScopAgg,
+      #                  lng = ~longitud,lat = ~latitud,
+      #                  radius = 3, 
+      #                  opacity = 0.5, 
+      #                  fillOpacity = 0.5, 
+      #                  color = 'orange', 
+      #                  fillColor = 1,
+      #                  popup = ~content,
+      #                  group = 'AutoScope') %>%
+      # addLegend(position = "topleft",labels = 'AutoScope', 
+      #           colors = 'orange',
+      #           title = NULL,
+      #           opacity = 0.5,
+      #           group = 'AutoScope') %>%
       addCircleMarkers(data = datSTM_Agg,
                        lng = ~long,lat = ~lat,
                        radius = 10,
@@ -655,27 +674,36 @@ output$distPlot <- renderLeaflet({
 
 dat_desc_Filtro = eventReactive(input$run, {
   
+  # Dias elegidos
+  diasIntercept = diasIntercept()
+  
+  
   minHoraIni = intTiempo()[['minHoraIni']]
   minHoraFin = intTiempo()[['minHoraFin']]
   
   datFiltro = subset(datJam_df,(minutoHora >= minHoraIni & minutoHora <= minHoraFin))
   
   
-  
-  ### FIn de semana
-  if(!('Todo' %in% input$varFinde  | is.null(input$varFinde))) {
-    datFiltro = subset(datFiltro, finDeSem %in% input$varFinde)
+### FIltro fechas todas
+  IndFecha = length(diasIntercept) < nrow(dsma)
+  if(IndFecha) {
+    datFiltro = subset(datFiltro,diaStr %in% diasIntercept)
   }
   
-  ### Dia de semana
-  if(!('Todo' %in% input$varDiaSem  | is.null(input$varDiaSem))) {
-    datFiltro = subset(datFiltro, diaSem %in% input$varDiaSem)
-  }
-  
-  ### Dia calendario
-  if(!('Todo' %in% input$varDiaEsp  | is.null(input$varDiaEsp))) {
-    datFiltro = subset(datFiltro, as.character(diaStr) %in% input$varDiaEsp)
-  }
+  # ### FIn de semana
+  # if(!('Todo' %in% input$varFinde  | is.null(input$varFinde))) {
+  #   datFiltro = subset(datFiltro, finDeSem %in% input$varFinde)
+  # }
+  # 
+  # ### Dia de semana
+  # if(!('Todo' %in% input$varDiaSem  | is.null(input$varDiaSem))) {
+  #   datFiltro = subset(datFiltro, diaSem %in% input$varDiaSem)
+  # }
+  # 
+  # ### Dia calendario
+  # if(!('Todo' %in% input$varDiaEsp  | is.null(input$varDiaEsp))) {
+  #   datFiltro = subset(datFiltro, as.character(diaStr) %in% input$varDiaEsp)
+  # }
   
   ### Nivel
   if(!('Todo' %in% input$varNivel  | is.null(input$varNivel))) {
@@ -793,7 +821,9 @@ observe({
   
   diasIntercept = diasInterceptHeat()
   
-  diaSemana = dsma[diasIntercept,] %>% arrange(levelDia) %>% 
+  diaSemana = dsma[diasIntercept,] %>% 
+    mutate(diaSem = as.character(diaSem)) %>% 
+    arrange(levelDia) %>% 
     select(diaSem) %>% data.frame()
   
   
@@ -801,6 +831,8 @@ observe({
   choMes<-c('Todo',unique(dsma[diasIntercept,'mes']))
   choFinde<-c('Todo',unique(dsma[diasIntercept,'finDeSem']))
   choDiaSem<-c('Todo',unique(diaSemana$diaSem))
+  # diaSemAux = unique(diaSemana[,c('diaSem','levelDia')]) %>% arrange(levelDia)
+  # choDiaSem<-c('Todo',diaSemAux[,'diaSem'])
   choDiaEsp<-c('Todo',unique(dsma[diasIntercept,'diaStr']))
   
   

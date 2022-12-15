@@ -54,7 +54,9 @@ load('Resultados/001_segmProy.RData')
 allBases = c('202112141520','202112231648','202201191112','202202071004','07_08_022022',
              '01_31_032022_P1','01_31_032022_P2','01_31_032022_P3','01_31_032022_P4',
              '01_25_042022_P1','01_25_042022_P2','01_25_042022_P3',
-             '26_30_202204','052022_P1','052022_P2','052022_P3','052022_P4')
+             '26_30_202204','052022_P1','052022_P2','052022_P3','052022_P4',
+             '062022_P1','062022_P2','062022_P3','062022_P4',
+             '072022_P1','072022_P2','072022_P3','072022_P4')
 
 # allBases = c('202112141520','202112231648','202201191112','202202071004','07_08_022022')
 
@@ -114,7 +116,7 @@ for(bb in allBases) {
     
     #### LEE BASE
     print(paste0(Sys.time(),' :Lee datos de la bases ',nameBase))
-    datos = read.table(paste0('Datos/etwazetrafficjam_',nameBase,'.csv'),sep = ',',header = T)
+    datos = read.table(paste0('../Datos/etwazetrafficjam_',nameBase,'.csv'),sep = ',',header = T)
     print(paste0(Sys.time(),' :Final del proceso'))
     
     print(paste0(Sys.time(),' :Arma base datJam'))

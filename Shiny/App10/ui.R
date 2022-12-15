@@ -151,7 +151,7 @@ ui <-
       ),
       selectizeInput('varFinde',label = 'Tipo de día',c(unique(dsma$finDeSem),'Todo'),selected = 'Todo', 
                      multiple = FALSE, options = list('plugins' = list('remove_button'))),
-      selectizeInput('varDiaSem',label = 'Dia semana',c(levels(datJamSegm_df$diaSem),'Todo'),selected = 'Todo', 
+      selectizeInput('varDiaSem',label = 'Dia semana',c(levels(dsma$diaSem),'Todo'),selected = 'Todo', 
                      multiple = TRUE, options = list('plugins' = list('remove_button'))),
       selectizeInput('varDiaEsp',label = 'Dia calendario',c(levels(datJamSegm_df$diaStr),'Todo'),selected = 'Todo', 
                      multiple = TRUE, options = list('plugins' = list('remove_button'))),
@@ -339,7 +339,7 @@ eventos con niveles más altos de congestión."),style = "font-size:14px")
                                       multiple = FALSE, options = list('plugins' = list('remove_button')))
                 ),
                 column(2,
-                       selectizeInput('varDiaSemHeat',label = 'Dia semana',c(levels(datJamSegm_df$diaSem),'Todo'),selected = 'Todo', 
+                       selectizeInput('varDiaSemHeat',label = 'Dia semana',c(levels(dsma$diaSem),'Todo'),selected = 'Todo', 
                                       multiple = TRUE, options = list('plugins' = list('remove_button')))
                 ),
                 column(2,
