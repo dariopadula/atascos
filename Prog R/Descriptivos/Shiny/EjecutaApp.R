@@ -104,6 +104,9 @@ rownames(nomVarsDF_s) = as.character(nomVarsDF$nomShow)
 ###### EJECUTA APP
 runApp('Prog R/Descriptivos/Shiny/App02',launch.browser = TRUE)
 
-
+## Para dibujar poligonos
+# https://gist.github.com/mndrake/aee9a0f5c53018860e46766d0131cd29
+# https://stackoverflow.com/questions/65347690/how-do-i-save-adddrawtoolbar-shapes-drawn-in-an-r-leaflet-shiny-map-so-i-can-re
+# https://github.com/bhaskarvk/leaflet.extras/issues/77
 # https://towardsdatascience.com/create-interactive-map-applications-in-r-and-r-shiny-for-exploring-geospatial-data-96b0f9692f0f
 
